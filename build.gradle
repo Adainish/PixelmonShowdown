@@ -176,15 +176,19 @@ jar {
         ])
     }
 }
-
-shadowJar {
-    configurations = [project.configurations.shadow]
-    archiveName = rootProject.name + "-" + rootProject.version + "-shadow.jar"
-    relocate('org.spongepowered', 'io.github.adainish.pixelmonshowdown.shade.spongepowered')
-}
-
-jar.finalizedBy('reobfJar')
-
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
+shadowJar {
+    configurations = [project.configurations.shadow]
+    dependsOn('reobfJar')
+    archiveName = rootProject.name + "-" + rootProject.version + "-shadow.jar"
+    relocate('org.spongepowered', 'io.github.adainish.pixelmonshowdown.shade.spongepowered')
+}
+reobf {
+    shadowJar {}
+}
+jar.finalizedBy('reobfJar')
+
+
+

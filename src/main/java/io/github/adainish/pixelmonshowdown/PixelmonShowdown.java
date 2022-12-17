@@ -1,22 +1,19 @@
 package io.github.adainish.pixelmonshowdown;
 
 import io.github.adainish.pixelmonshowdown.arenas.ArenaManager;
+import io.github.adainish.pixelmonshowdown.commands.ArenaCommand;
+import io.github.adainish.pixelmonshowdown.commands.DisplayCommand;
+import io.github.adainish.pixelmonshowdown.commands.ShowdownCommand;
 import io.github.adainish.pixelmonshowdown.queues.QueueManager;
 import io.github.adainish.pixelmonshowdown.util.DataManager;
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
+import io.github.adainish.pixelmonshowdown.wrapper.PermissionWrapper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.RegistryEvent;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.InterModComms;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
-import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
 import net.minecraftforge.fml.event.server.FMLServerStartedEvent;
-import net.minecraftforge.fml.event.server.FMLServerStartingEvent;
 import net.minecraftforge.fml.event.server.FMLServerStoppingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLConfig;
@@ -25,10 +22,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod("pixelmonshowdown")
@@ -45,12 +38,11 @@ public class PixelmonShowdown {
 
     public final Logger log = LogManager.getLogger(MOD_NAME);
     public MinecraftServer server;
-    private Path dir;
 
     public QueueManager queueManager = new QueueManager();
     public ArenaManager arenaManager = new ArenaManager();
 
-    public List<File> fileList = new ArrayList<>();
+    public PermissionWrapper permissionWrapper;
 
     public PixelmonShowdown() {
         // Register the setup method for modloading
@@ -67,9 +59,17 @@ public class PixelmonShowdown {
                 .replace("%v", VERSION)
                 .replace("%y", YEAR)
         );
-        File directory = new File(FMLPaths.GAMEDIR.get().resolve(FMLConfig.defaultConfigPath()));
-        dir = FMLPaths.GAMEDIR.get().resolve(FMLConfig.defaultConfigPath());
-        DataManager.setup(dir);
+        File configFolder = new File(FMLPaths.GAMEDIR.get().resolve(FMLConfig.defaultConfigPath()) + "/PixelmonShowdown");
+        DataManager.setup(configFolder);
+    }
+
+    @SubscribeEvent
+    public void onCommandRegistry(RegisterCommandsEvent event)
+    {
+        permissionWrapper = new PermissionWrapper();
+        event.getDispatcher().register(ShowdownCommand.getCommand());
+        event.getDispatcher().register(DisplayCommand.getCommand());
+        event.getDispatcher().register(ArenaCommand.getCommand());
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
@@ -92,6 +92,7 @@ public class PixelmonShowdown {
 
     public void reload()
     {
+        log.warn("Reloading");
         DataManager.saveElos();
         DataManager.load();
         queueManager.loadFromConfig();

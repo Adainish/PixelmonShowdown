@@ -1,21 +1,26 @@
 package io.github.adainish.pixelmonshowdown.queues;
 
+import com.pixelmonmod.api.pokemon.requirement.impl.FormRequirement;
 import com.pixelmonmod.pixelmon.Pixelmon;
 import com.pixelmonmod.pixelmon.api.battles.BattleType;
 import com.pixelmonmod.pixelmon.api.battles.attack.AttackRegistry;
 import com.pixelmonmod.pixelmon.api.pokemon.Element;
 import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
+import com.pixelmonmod.pixelmon.api.pokemon.PokemonBase;
 import com.pixelmonmod.pixelmon.api.pokemon.ability.Ability;
 import com.pixelmonmod.pixelmon.api.pokemon.ability.AbilityRegistry;
+import com.pixelmonmod.pixelmon.api.pokemon.ability.AbstractAbility;
 import com.pixelmonmod.pixelmon.api.pokemon.species.Species;
+import com.pixelmonmod.pixelmon.api.pokemon.species.Stats;
 import com.pixelmonmod.pixelmon.api.registries.PixelmonSpecies;
+import com.pixelmonmod.pixelmon.battles.api.rules.BattleProperty;
+import com.pixelmonmod.pixelmon.battles.api.rules.BattleRuleRegistry;
 import com.pixelmonmod.pixelmon.battles.api.rules.BattleRules;
 import com.pixelmonmod.pixelmon.battles.api.rules.clauses.BattleClause;
 import com.pixelmonmod.pixelmon.battles.api.rules.clauses.BattleClauseRegistry;
-import com.pixelmonmod.pixelmon.battles.api.rules.clauses.type.AbilityClause;
-import com.pixelmonmod.pixelmon.battles.api.rules.clauses.type.ItemPreventClause;
-import com.pixelmonmod.pixelmon.battles.api.rules.clauses.type.MoveClause;
-import com.pixelmonmod.pixelmon.battles.api.rules.clauses.type.PokemonBanClause;
+import com.pixelmonmod.pixelmon.battles.api.rules.clauses.type.*;
+import com.pixelmonmod.pixelmon.battles.api.rules.property.BattleTypeProperty;
+import com.pixelmonmod.pixelmon.battles.api.rules.property.TeamPreviewProperty;
 import com.pixelmonmod.pixelmon.battles.attacks.Attack;
 import com.pixelmonmod.pixelmon.battles.attacks.ImmutableAttack;
 import com.pixelmonmod.pixelmon.enums.heldItems.EnumHeldItems;
@@ -40,7 +45,7 @@ public class CompetitiveFormat {
     private List<ItemPreventClause> itemClauses = new ArrayList<>();
     private List<AbilityClause> abilityClauses = new ArrayList<>();
     private List<MoveClause> moveClauses = new ArrayList<>();
-    private List<BattleClauseAll> complexClauses = new ArrayList<>();
+    private List<LogicalOrBattleClauseSingle> complexClauses = new ArrayList<>();
     private List<String> strBattleRules = new ArrayList<>();
     private List<String> strPokemonClauses = new ArrayList<>();
     private List<String> strItemClauses = new ArrayList<>();
@@ -57,40 +62,38 @@ public class CompetitiveFormat {
     //Get Pokemon clause
     public PokemonBanClause getPokemonClause(String pokemonClause){
         //Check if pokemon is a form
-        if(pokemonClause.contains("-")){
+        if(pokemonClause.contains("-")) {
             //Check if form exists
-            if(PokemonForm.getFromName(pokemonClause).isPresent()){
-                PokemonForm form = PokemonForm.getFromName(pokemonClause).get();
+
+
+            if (PixelmonSpecies.get(pokemonClause).isPresent()) {
+                Species form = PixelmonSpecies.get(pokemonClause).get().getValueUnsafe();
 
                 String[] splitString = pokemonClause.split("-");
 
-                if(splitString.length == 2) {
+
+                if (splitString.length == 2) {
 
                     //Get pokemon name & form from string
                     String pokemon = splitString[0];
                     String suffix = "-" + splitString[1].toLowerCase();
 
-                    //Check if pokemon exists
-                    if(EnumSpecies.getFromName(pokemon).isPresent()) {
 
-                        //Find object for suffix & return it
-                        Object[] forms = EnumSpecies.getFromName(pokemon).get().getPossibleForms(false).toArray();
-                        for (Object formsList : forms) {
-                            IEnumForm castF = (IEnumForm) formsList;
-                            if (castF.getFormSuffix().equals(suffix)) {
-                                form.form = castF.getForm();
-                                PokemonBanClause clause = new PokemonBanClause(pokemonClause, form);
-                                return clause;
-                            }
+                    //Find object for suffix & return it
+                    Object[] forms = form.getForms().toArray();
+                    for (Object formsList : forms) {
+                        Stats castF = (Stats) formsList;
+                        if (castF.getName().equals(suffix)) {
+                            PokemonBase pokemonBase = new PokemonBase(form, castF);
+                            return new PokemonBanClause(pokemonClause, pokemonBase);
                         }
                     }
                 }
             }
         }
         //If form isn't found or no suffix, try to find species & return it
-        if (EnumSpecies.getFromNameAnyCase(pokemonClause) != null) {
-            PokemonBanClause clause = new PokemonClause(pokemonClause, EnumSpecies.getFromNameAnyCase(pokemonClause));
-            return clause;
+        if (PixelmonSpecies.get(pokemonClause).isPresent()) {
+            return new PokemonBanClause(pokemonClause, PixelmonSpecies.get(pokemonClause).get().getValueUnsafe());
         }
         //Throw error if pokemon not found
         PixelmonShowdown.getInstance().log.error("Error Getting Pokemon Clause: " + pokemonClause + ". Please check format config for errors.");
@@ -116,15 +119,15 @@ public class CompetitiveFormat {
                 pokemonClauses.add(clause);
             }
         }
-        else if(EnumSpecies.getFromNameAnyCase(pokemonClause) != null || PokemonForm.getFromName(pokemonClause).isPresent()) {
-            PokemonClause clause = getPokemonClause(pokemonClause);
+        else if(PixelmonSpecies.get(pokemonClause).isPresent()) {
+            PokemonBanClause clause = getPokemonClause(pokemonClause);
             if(clause != null){
                 strPokemonClauses.add(pokemonClause);
                 pokemonClauses.add(clause);
             }
         }
         else{
-            PixelmonShowdown.getLogger().error("Error Adding Pokemon Clause: " + pokemonClause + ". Please check format config for errors.");
+            PixelmonShowdown.getInstance().log.error("Error Adding Pokemon Clause: " + pokemonClause + ". Please check format config for errors.");
         }
     }
 
@@ -189,10 +192,8 @@ public class CompetitiveFormat {
     //Gets ability clause from String
     public AbilityClause getAbilityClause(String abilityClause){
         if(AbilityRegistry.getAbility(abilityClause).isPresent()) {
-            AbilityClause clause = new AbilityClause(abilityClause, )
-//            Class<? extends Ability> ability = AbilityRegistry.getAbility(abilityClause).get();
-//            AbilityClause clause = new AbilityClause(abilityClause, ability);
-            return clause;
+            AbstractAbility retrievedAbility = (AbstractAbility) AbilityRegistry.getAbility(abilityClause).get();
+            return new AbilityClause(abilityClause, retrievedAbility.getClass());
         }
         else{
             PixelmonShowdown.getInstance().log.error("Error Adding Ability Clause: " + abilityClause + ". Please check format config for errors.");
@@ -203,7 +204,7 @@ public class CompetitiveFormat {
     //Adds ability clause to rules
     public void addAbilityClause(String abilityClause){
         AbilityClause clause = getAbilityClause(abilityClause);
-        if(!clause.equals(null)){
+        if(clause != null){
             strAbilityClauses.add(abilityClause);
             abilityClauses.add(clause);
         }
@@ -237,42 +238,39 @@ public class CompetitiveFormat {
     //Adds a complex clause (when all rules are present, pokemon is not allowed)
     public void addComplexClause(List<String> clauses){
         ArrayList<BattleClause> builtClauses = new ArrayList<>();
-        for(int i = 0; i < clauses.size(); i++){
-            String strClause = clauses.get(i);
-            if(strClause.startsWith("P:")){
+        clauses.forEach(strClause -> {
+            if (strClause.startsWith("P:")) {
                 String pokemonClause = strClause.substring(2);
                 PokemonBanClause clause = getPokemonClause(pokemonClause);
-                if(clause != null){
+                if (clause != null) {
                     builtClauses.add(clause);
                 }
-            }
-            else if(strClause.startsWith("A:")){
+            } else if (strClause.startsWith("A:")) {
                 String abilityClause = strClause.substring(2);
                 AbilityClause clause = getAbilityClause(abilityClause);
-                if(clause != null){
+                if (clause != null) {
                     builtClauses.add(clause);
                 }
-            }
-            else if(strClause.startsWith("I:")){
+            } else if (strClause.startsWith("I:")) {
                 String itemClause = strClause.substring(2);
                 ItemPreventClause clause = getItemClause(itemClause);
-                if(clause != null){
+                if (clause != null) {
                     builtClauses.add(clause);
                 }
-            }
-            else if(strClause.startsWith("M:")){
+            } else if (strClause.startsWith("M:")) {
                 String moveClause = strClause.substring(2);
                 MoveClause clause = getMoveClause(moveClause);
-                if(clause != null){
+                if (clause != null) {
                     builtClauses.add(clause);
                 }
             }
-        }
+        });
 
         BattleClause[] arrClauses = new BattleClause[builtClauses.size()];
         arrClauses = builtClauses.toArray(arrClauses);
 
-        BattleClauseSingleAll comboClause = new BattleClauseSingleAll("ComplexClause" + complexNum, arrClauses);
+
+        LogicalOrBattleClauseSingle comboClause = new LogicalOrBattleClauseSingle("ComplexClause" + complexNum, arrClauses);
 
         complexNum++;
         complexClauses.add(comboClause);
@@ -341,17 +339,15 @@ public class CompetitiveFormat {
             PixelmonShowdown.getInstance().log.error("Error Adding Minimum Level Clause: " + minLevel + ". Please check format config for errors.");
         }
 
+        newRules = new BattleRules(BattleType.SINGLE);
+
         newRules.setNewClauses(allClauses);
-
-        newRules.battleType = BattleType.SINGLE;
-        newRules.teamPreview = false;
-        newRules.levelCap = DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Level-Cap").getInt();
-        newRules.fullHeal = DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Full-Heal").getBoolean();
-        newRules.numPokemon = DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Num-Pokemon").getInt();
-        newRules.raiseToCap = DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Raise-To-Cap").getBoolean();
-        newRules.turnTime = DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Turn-Time").getInt();
-
-
+        newRules.set(BattleRuleRegistry.TEAM_PREVIEW, true);
+        newRules.set(BattleRuleRegistry.LEVEL_CAP, DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Level-Cap").getInt());
+        newRules.set(BattleRuleRegistry.FULL_HEAL, DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Full-Heal").getBoolean());
+        newRules.set(BattleRuleRegistry.NUM_POKEMON, DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Num-Pokemon").getInt());
+        newRules.set(BattleRuleRegistry.RAISE_TO_CAP, DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Raise-To-Cap").getBoolean());
+        newRules.set(BattleRuleRegistry.TURN_TIME, DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Turn-Time").getInt());
         this.battleRules = newRules;
     }
 

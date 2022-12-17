@@ -7,11 +7,13 @@ import org.spongepowered.configurate.ConfigurationOptions;
 import org.spongepowered.configurate.hocon.HoconConfigurationLoader;
 import org.spongepowered.configurate.loader.ConfigurationLoader;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class DataManager {
+
     private static Path dir, config, elos, formats, arenas;
     private static ConfigurationLoader<CommentedConfigurationNode> configLoad, elosLoad, formatsLoad, arenasLoad;
     private static CommentedConfigurationNode configNode, elosNode, formatsNode, arenasNode;
@@ -19,8 +21,8 @@ public class DataManager {
     private static boolean autoSaveEnabled;
     private static int interval;
 
-    public static void setup(Path folder) {
-        dir = folder;
+    public static void setup(File folder) {
+        dir = folder.toPath();
         config = dir.resolve(FILES[0]);
         elos = dir.resolve(FILES[1]);
         formats = dir.resolve(FILES[2]);
@@ -33,11 +35,6 @@ public class DataManager {
         try {
             if(!Files.exists(dir))
                 Files.createDirectory(dir);
-
-            PixelmonShowdown.getContainer().getAsset(FILES[0]).get().copyToFile(config, false, true);
-            PixelmonShowdown.getContainer().getAsset(FILES[1]).get().copyToFile(elos, false, true);
-            PixelmonShowdown.getContainer().getAsset(FILES[2]).get().copyToFile(formats, false, true);
-            PixelmonShowdown.getContainer().getAsset(FILES[3]).get().copyToFile(arenas, false, true);
 
             configLoad = HoconConfigurationLoader.builder().path(config).build();
             elosLoad = HoconConfigurationLoader.builder().path(elos).build();
@@ -102,22 +99,22 @@ public class DataManager {
     public static void update() {
         try {
             configNode.mergeFrom(HoconConfigurationLoader.builder()
-                    .url(PixelmonShowdown.getContainer().getAsset(FILES[0]).get().getUrl())
+                    .url(config.toUri().toURL())
                     .build()
                     .load(ConfigurationOptions.defaults()));
 
             elosNode.mergeFrom(HoconConfigurationLoader.builder()
-                    .url(PixelmonShowdown.getContainer().getAsset(FILES[1]).get().getUrl())
+                    .url(elos.toUri().toURL())
                     .build()
                     .load(ConfigurationOptions.defaults()));
 
             formatsNode.mergeFrom(HoconConfigurationLoader.builder()
-                    .url(PixelmonShowdown.getContainer().getAsset(FILES[2]).get().getUrl())
+                    .url(formats.toUri().toURL())
                     .build()
                     .load(ConfigurationOptions.defaults()));
 
             arenasNode.mergeFrom(HoconConfigurationLoader.builder()
-                    .url(PixelmonShowdown.getInstance().getContainer().getAsset(FILES[3]).get().getUrl())
+                    .url(arenas.toUri().toURL())
                     .build()
                     .load(ConfigurationOptions.defaults()));
 

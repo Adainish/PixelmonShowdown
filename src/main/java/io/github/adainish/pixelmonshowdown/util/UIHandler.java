@@ -10,11 +10,9 @@ import ca.landonjw.gooeylibs2.api.helpers.PaginationHelper;
 import ca.landonjw.gooeylibs2.api.page.GooeyPage;
 import ca.landonjw.gooeylibs2.api.page.LinkedPage;
 import ca.landonjw.gooeylibs2.api.page.Page;
-import ca.landonjw.gooeylibs2.api.template.Template;
 import ca.landonjw.gooeylibs2.api.template.types.ChestTemplate;
 import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
 import com.pixelmonmod.pixelmon.api.pokemon.item.pokeball.PokeBallRegistry;
-import com.pixelmonmod.pixelmon.api.pokemon.species.Pokedex;
 import com.pixelmonmod.pixelmon.api.registries.PixelmonItems;
 import com.pixelmonmod.pixelmon.api.storage.StorageProxy;
 import com.pixelmonmod.pixelmon.api.util.helpers.SpriteItemHelper;
@@ -30,25 +28,21 @@ import io.github.adainish.pixelmonshowdown.queues.EloProfile;
 import io.github.adainish.pixelmonshowdown.queues.QueueManager;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.text.StringTextComponent;
 
 import java.util.*;
+import java.util.stream.IntStream;
 
 public class UIHandler {
-    private QueueManager manager = PixelmonShowdown.getInstance().queueManager;
+    private final QueueManager manager = PixelmonShowdown.getInstance().queueManager;
     private String activeQueueFormat = null;
-    private Item activeQueueBall = PixelmonItems.poke_ball;
+    private ItemStack activeQueueBall = new ItemStack(PixelmonItems.poke_ball);
     private String activeArena = null;
-    private Item activeArenaBall = PixelmonItems.poke_ball;
-    private PluginContainer container = PixelmonShowdown.getContainer();
-    private ServerPlayerEntity player;
-    private UUID playerUUID;
-    private int arenasPageNum = 1;
-    private int leaderboardPageNum = 1;
-    private int formatsPageNum = 1;
+    private final ItemStack activeArenaBall = new ItemStack(PixelmonItems.poke_ball);
+    private final ServerPlayerEntity player;
+    private final UUID playerUUID;
     private final int ELO_FLOOR = DataManager.getConfigNode().node("Elo-Management", "Elo-Range", "Elo-Floor").getInt();
     private Pokemon startingPokemon = null;
 
@@ -64,14 +58,8 @@ public class UIHandler {
 
 
     public Page MainPage() {
-        Template template;
         ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
                 .border(0, 0, 3, 9, filler);
-
-
-        activeQueueFormat = null;
-        activeQueueBall = PixelmonItems.poke_ball;
-        leaderboardPageNum = 1;
 
         //no button
         GooeyButton queue;
@@ -92,9 +80,7 @@ public class UIHandler {
             ItemStack itemInMatch = new ItemStack(Items.RED_WOOL);
             queue = GooeyButton.builder()
                     .title(StringUtil.formattedString("&6You are already in a match!"))
-                    .onClick(b -> {
-                        UIManager.closeUI(b.getPlayer());
-                    })
+                    .onClick(b -> UIManager.closeUI(b.getPlayer()))
                     .display(itemInMatch)
                     .build();
         } else {
@@ -103,8 +89,13 @@ public class UIHandler {
             queue = GooeyButton.builder()
                     .title(StringUtil.formattedString("&6Enter Queue"))
                     .onClick(b -> {
-                        //if (haspermission open) openQueueGUI else close UI
-                        UIManager.closeUI(b.getPlayer());
+                        if (PermissionUtil.checkPerm(b.getPlayer(), PixelmonShowdown.getInstance().permissionWrapper.openQueueGUI))
+                        {
+                            UIManager.openUIForcefully(b.getPlayer(), QueueGUI());
+                        } else {
+                            b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&cNo Permission!")), b.getPlayer().getUniqueID());
+                            UIManager.closeUI(b.getPlayer());
+                        }
                     })
                     .display(itemEnterQueue)
                     .build();
@@ -113,25 +104,33 @@ public class UIHandler {
         //stats
 
         Button itemStats = GooeyButton.builder()
-                .title(StringUtil.formattedString("&c"))
+                .title(StringUtil.formattedString("&cStats"))
                 .display(new ItemStack(Items.PAPER))
                 .onClick(b -> {
-                    //needed perm: pixelmonshowdown.user.action.openstats
-                    //openStatsGUI();
-                    // else
-                    UIManager.closeUI(b.getPlayer());
+                    if (PermissionUtil.checkPerm(b.getPlayer(), PixelmonShowdown.getInstance().permissionWrapper.openStatsGUI))
+                    {
+                        UIManager.openUIForcefully(b.getPlayer(), StatsGUI());
+                    } else {
+                        b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&cNo Permission!")), b.getPlayer().getUniqueID());
+                        UIManager.closeUI(b.getPlayer());
+                    }
 
                 })
-                .lore(StringUtil.formattedArrayList(Arrays.asList("&7")))
+                .lore(StringUtil.formattedArrayList(Collections.singletonList("&7")))
                 .build();
 
         Button leaderBoard = GooeyButton.builder()
-                .title(StringUtil.formattedString(""))
+                .title(StringUtil.formattedString("&cLeaderboard"))
                 .display(new ItemStack(Items.MAP))
                 .onClick(b -> {
-                    //pixelmonshowdown.user.action.openleaderboard
-                    //else no permission
-                    UIManager.closeUI(b.getPlayer());
+                    if (PermissionUtil.checkPerm(b.getPlayer(), PixelmonShowdown.getInstance().permissionWrapper.openLeaderBoardPermission))
+                    {
+                        UIManager.openUIForcefully(b.getPlayer(), LeaderboardGUI());
+                    } else {
+                        //else no permission
+                        b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&cNo Permission!")), b.getPlayer().getUniqueID());
+                        UIManager.closeUI(b.getPlayer());
+                    }
                 })
                 .build();
 
@@ -139,9 +138,14 @@ public class UIHandler {
                 .title(StringUtil.formattedString("&6Open Rules"))
                 .display(new ItemStack(Items.BOOK))
                 .onClick(b -> {
-                    //pixelmonshowdown.user.action.openrules
-                    //else no permission
-                    UIManager.closeUI(b.getPlayer());
+                    if (PermissionUtil.checkPerm(b.getPlayer(), PixelmonShowdown.getInstance().permissionWrapper.openRulesPermission))
+                    {
+                        UIManager.openUIForcefully(b.getPlayer(), RulesGUI());
+                    } else {
+                        //else no permission
+                        b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&cNo Permission!")), b.getPlayer().getUniqueID());
+                        UIManager.closeUI(b.getPlayer());
+                    }
                 })
                 .build();
 
@@ -154,22 +158,21 @@ public class UIHandler {
     }
     public GooeyPage QueueGUI()
     {
-        Template template;
         ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
                 .border(0, 0, 3, 9, filler);
 
         String title = "&6Format: Not Chosen";
-        if (activeQueueFormat == null)
+        if (activeQueueFormat != null)
             title = "&6Format: " + activeQueueFormat;
 
         GooeyButton queueType = GooeyButton.builder()
                 .title(StringUtil.formattedString(title))
-                .display(new ItemStack(activeQueueBall))
-                .lore(StringUtil.formattedArrayList(Arrays.asList("&aClick to see available formats")))
+                .display(activeQueueBall)
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), openFormatList("RulesGUI")))
+                .lore(StringUtil.formattedArrayList(Collections.singletonList("&aClick to see available formats")))
                 .build();
 
-        ServerPlayerEntity participant = player;
-        Pokemon[] party = StorageProxy.getParty(participant).getAll();
+        Pokemon[] party = StorageProxy.getParty(player).getAll();
         ArrayList<Pokemon> pokemonList = new ArrayList<>();
         for (Pokemon pokemon : party) {
             if (pokemon == null) {
@@ -177,7 +180,7 @@ public class UIHandler {
             }
             pokemonList.add(pokemon);
         }
-        String pokemonItemTitle = "";
+        String pokemonItemTitle;
         boolean doesValidate = false;
         if(activeQueueFormat == null){
             pokemonItemTitle = "&6Team Eligible: &4Format Not Chosen";
@@ -236,13 +239,11 @@ public class UIHandler {
 
     public GooeyPage StatsGUI()
     {
-        Template template;
         ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
                 .border(0, 0, 3, 9, filler);
 
-        formatsPageNum = 1;
-        String title = "";
-        ItemStack itemQueueTypeButton = new ItemStack(activeQueueBall);
+        String title;
+        ItemStack itemQueueTypeButton = activeQueueBall;
         if(activeQueueFormat == null){
             title = "&6Format: Not Chosen";
         }
@@ -254,13 +255,11 @@ public class UIHandler {
                 .display(itemQueueTypeButton)
                 .title(StringUtil.formattedString(title))
                 .onClick(b ->
-                {
-                    UIManager.openUIForcefully(b.getPlayer(), openFormatList("StatsGUI"));
-                })
-                .lore(StringUtil.formattedArrayList(Arrays.asList("&aClick to see available formats!")))
+                        UIManager.openUIForcefully(b.getPlayer(), openFormatList("StatsGUI")))
+                .lore(StringUtil.formattedArrayList(Collections.singletonList("&aClick to see available formats!")))
                 .build();
 
-        ItemStack eloButtonStack = new ItemStack(activeQueueBall);
+        ItemStack eloButtonStack = activeQueueBall;
         String eloString = "";
         if(activeQueueFormat == null){
             eloString = "&6Elo: Format Not Chosen";
@@ -397,9 +396,7 @@ public class UIHandler {
         GooeyButton back = GooeyButton.builder()
                 .display(new ItemStack(PixelmonItems.red_card))
                 .title(StringUtil.formattedString("&6Go Back"))
-                .onClick(b -> {
-                    UIManager.openUIForcefully(b.getPlayer(), MainPage());
-                })
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage()))
                 .build();
 
         chestTemplate.set(1, 1, itemQueueType);
@@ -418,10 +415,9 @@ public class UIHandler {
         ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
                 .border(0, 0, 3, 9, filler);
 
-        formatsPageNum = 1;
 
-        ItemStack itemQueueTypeStack = new ItemStack(activeQueueBall);
-        String itemQueueTitle = "";
+        ItemStack itemQueueTypeStack = activeQueueBall;
+        String itemQueueTitle;
         if(activeQueueFormat == null){
             itemQueueTitle = "&6Format: Not Chosen";
         }
@@ -431,14 +427,12 @@ public class UIHandler {
         GooeyButton itemQueueType = GooeyButton.builder()
                 .display(itemQueueTypeStack)
                 .title(StringUtil.formattedString(itemQueueTitle))
-                .lore(StringUtil.formattedArrayList(Arrays.asList("&aClick to see available formats!")))
-                .onClick(b -> {
-                    UIManager.openUIForcefully(b.getPlayer(), openFormatList("RulesGUI"));
-                })
+                .lore(StringUtil.formattedArrayList(Collections.singletonList("&aClick to see available formats!")))
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), openFormatList("RulesGUI")))
                 .build();
 
         ItemStack itemRulesClausesStack = new ItemStack(Items.KNOWLEDGE_BOOK);
-        String itemRulesClausesTitle = "";
+        String itemRulesClausesTitle;
         List<String> clausesDisplay = new ArrayList<>();
         if(activeQueueFormat == null){
             itemRulesClausesTitle = "&6Format Not Chosen";
@@ -457,7 +451,7 @@ public class UIHandler {
                 .build();
 
         ItemStack itemPokemonClausesStack = new ItemStack(Items.BOOK);
-        String itemPokemonClausesTitle = "";
+        String itemPokemonClausesTitle;
         List<String> pokemonClausesDisplay = new ArrayList<>();
         if(activeQueueFormat == null){
             itemPokemonClausesTitle = "&6Format Not Chosen";
@@ -476,7 +470,7 @@ public class UIHandler {
                 .build();
 
         ItemStack itemAbilityClauses = new ItemStack(Items.BOOK);
-        String itemAbilityClausesTitle = "";
+        String itemAbilityClausesTitle;
         List<String> abilityClausesDisplay = new ArrayList<>();
         if(activeQueueFormat == null){
             itemAbilityClausesTitle = "&6Format Not Chosen";
@@ -496,7 +490,7 @@ public class UIHandler {
                 .build();
 
         ItemStack itemItemClauses = new ItemStack(Items.BOOK);
-        String itemClausesTitle = "";
+        String itemClausesTitle;
         List<String> itemClausesDisplay = new ArrayList<>();
         if(activeQueueFormat == null){
             itemClausesTitle = "&6Format Not Chosen";
@@ -516,7 +510,7 @@ public class UIHandler {
                 .display(itemItemClauses)
                 .build();
 
-        String moveClausesTitle = "";
+        String moveClausesTitle;
         ItemStack itemMoveClauses = new ItemStack(Items.BOOK);
         List<String> moveClausesDisplay = new ArrayList<>();
         if(activeQueueFormat == null){
@@ -540,9 +534,7 @@ public class UIHandler {
         GooeyButton back = GooeyButton.builder()
                 .title(StringUtil.formattedString("&6Go Back"))
                 .display(new ItemStack(PixelmonItems.red_card))
-                .onClick(b -> {
-                    UIManager.openUIForcefully(b.getPlayer(), MainPage());
-                })
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage()))
                 .build();
 
 
@@ -575,7 +567,7 @@ public class UIHandler {
                     Button profileButton = GooeyButton.builder()
                             .display(itemPlayer1)
                             .title(StringUtil.formattedString("&6" + profile.getPlayerName()))
-                            .lore(StringUtil.formattedArrayList(Arrays.asList("&aElo: " + profile.getElo())))
+                            .lore(StringUtil.formattedArrayList(Collections.singletonList("&aElo: " + profile.getElo())))
                             .build();
                     buttons.add(profileButton);
                 }
@@ -588,8 +580,7 @@ public class UIHandler {
     public LinkedPage LeaderboardGUI()
     {
         PlaceholderButton placeHolderButton = new PlaceholderButton();
-        ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
-                .border(0, 0, 3, 9, filler);
+        ChestTemplate.Builder chestTemplate;
 
         LinkedPageButton previous = LinkedPageButton.builder()
                 .display(new ItemStack(PixelmonItems.trade_holder_left))
@@ -603,9 +594,9 @@ public class UIHandler {
                 .linkType(LinkType.Next)
                 .build();
 
-        ItemStack itemQueueType = new ItemStack(activeQueueBall);
+        ItemStack itemQueueType = activeQueueBall;
 
-        String itemQueueTypeTitle = "";
+        String itemQueueTypeTitle;
         if(activeQueueFormat == null){
             itemQueueTypeTitle = "&6Format: Not Chosen";
         }
@@ -619,17 +610,13 @@ public class UIHandler {
                 .display(itemQueueType)
                 .title(StringUtil.formattedString(itemQueueTypeTitle))
                 .lore(StringUtil.formattedArrayList(lore))
-                .onClick(b -> {
-                    openFormatList("LeaderboardGUI");
-                })
+                .onClick(b -> openFormatList("LeaderboardGUI"))
                 .build();
 
         GooeyButton back = GooeyButton.builder()
                 .title(StringUtil.formattedString("&6Go Back"))
                 .display(new ItemStack(PixelmonItems.red_card))
-                .onClick(b -> {
-                    UIManager.openUIForcefully(b.getPlayer(), MainPage());
-                })
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage()))
                 .build();
 
         if (eloProfileGeneration().size() > 18) {
@@ -656,8 +643,7 @@ public class UIHandler {
                 .border(0, 0, 3, 9, filler);
 
 
-        ItemStack itemArenas = new ItemStack(activeArenaBall);
-        String itemArenasTitle = "";
+        String itemArenasTitle;
         List<String> lore = new ArrayList<>();
         lore.add("&aClick to see available arenas!");
         if(activeArena == null){
@@ -671,7 +657,7 @@ public class UIHandler {
         GooeyButton arenas = GooeyButton.builder()
                 .title(StringUtil.formattedString(itemArenasTitle))
                 .lore(StringUtil.formattedArrayList(lore))
-                .display(itemArenas)
+                .display(activeArenaBall)
                 .onClick(b ->
                 {
                     if (activeArena != null)
@@ -741,9 +727,7 @@ public class UIHandler {
         GooeyButton back = GooeyButton.builder()
                 .title(StringUtil.formattedString("&6Go Back"))
                 .display(new ItemStack(PixelmonItems.red_card))
-                .onClick(b -> {
-                    UIManager.openUIForcefully(b.getPlayer(), ArenasGUI());
-                })
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), ArenasGUI()))
                 .build();
 
 
@@ -764,13 +748,10 @@ public class UIHandler {
         List<Button> buttons = new ArrayList<>();
         for (Arena arena:arenas) {
             if(arena != null){
-                ItemStack ball = new ItemStack(activeArenaBall);
                 Button arenaButton = GooeyButton.builder()
-                        .display(ball)
+                        .display(activeArenaBall)
                         .title(StringUtil.formattedString("&6" + arena.getName()))
-                        .onClick(b -> {
-                            activeArena = arena.getName();
-                        })
+                        .onClick(b -> activeArena = arena.getName())
                         .build();
                 buttons.add(arenaButton);
             }
@@ -782,8 +763,7 @@ public class UIHandler {
     public LinkedPage ViewArenasGUI()
     {
         PlaceholderButton placeHolderButton = new PlaceholderButton();
-        ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
-                .border(0, 0, 3, 9, filler);
+        ChestTemplate.Builder chestTemplate;
 
         LinkedPageButton previous = LinkedPageButton.builder()
                 .display(new ItemStack(PixelmonItems.trade_holder_left))
@@ -797,9 +777,9 @@ public class UIHandler {
                 .linkType(LinkType.Next)
                 .build();
 
-        ItemStack itemQueueType = new ItemStack(activeQueueBall);
+        ItemStack itemQueueType = activeQueueBall;
 
-        String itemQueueTypeTitle = "";
+        String itemQueueTypeTitle;
         if(activeQueueFormat == null){
             itemQueueTypeTitle = "&6Format: Not Chosen";
         }
@@ -813,17 +793,13 @@ public class UIHandler {
                 .display(itemQueueType)
                 .title(StringUtil.formattedString(itemQueueTypeTitle))
                 .lore(StringUtil.formattedArrayList(lore))
-                .onClick(b -> {
-                    openFormatList("LeaderboardGUI");
-                })
+                .onClick(b -> openFormatList("LeaderboardGUI"))
                 .build();
 
         GooeyButton back = GooeyButton.builder()
                 .title(StringUtil.formattedString("&6Go Back"))
                 .display(new ItemStack(PixelmonItems.red_card))
-                .onClick(b -> {
-                    UIManager.openUIForcefully(b.getPlayer(), MainPage());
-                })
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage()))
                 .build();
 
         if (arenaViewButtons().size() > 18) {
@@ -870,8 +846,7 @@ public class UIHandler {
         ArrayList<Arena> arenas = arenaManager.getArenas();
 
         PlaceholderButton placeHolderButton = new PlaceholderButton();
-        ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
-                .border(0, 0, 3, 9, filler);
+        ChestTemplate.Builder chestTemplate;
 
         LinkedPageButton previous = LinkedPageButton.builder()
                 .display(new ItemStack(PixelmonItems.trade_holder_left))
@@ -913,8 +888,51 @@ public class UIHandler {
     }
 
 
-    public GooeyPage openFormatList(String fromGUI)
+    List<Button> formatButtonList(Object[] formats, String fromGUI) {
+        List<Button> buttons = new ArrayList<>();
+
+        IntStream.range(0, formats.length).forEach(i -> {
+            String format = (String) formats[i];
+            if (format != null) {
+                int pokeBallIndex = i % PokeBallRegistry.getAll().size();
+                ItemStack pokeBall = PokeBallRegistry.getAll().get(pokeBallIndex).getBallItem();
+
+                GooeyButton button = GooeyButton.builder()
+                        .display(pokeBall)
+                        .title(StringUtil.formattedString("&6" + format))
+                        .onClick(b ->
+                                {
+                                    activeQueueFormat = format;
+                                    activeQueueBall = pokeBall;
+                                    switch (fromGUI) {
+                                        case "QueueGUI":
+                                            UIManager.openUIForcefully(player, QueueGUI());
+                                            break;
+                                        case "StatsGUI":
+                                            UIManager.openUIForcefully(player, StatsGUI());
+                                            break;
+                                        case "RulesGUI":
+                                            UIManager.openUIForcefully(player, RulesGUI());
+                                            break;
+                                        case "LeaderboardGUI":
+                                            UIManager.openUIForcefully(player, LeaderboardGUI());
+                                            break;
+                                    }
+                                }
+                        )
+                        .build();
+                buttons.add(button);
+            }
+        });
+        return buttons;
+    }
+
+
+    public LinkedPage openFormatList(String fromGUI)
     {
+        PlaceholderButton placeHolderButton = new PlaceholderButton();
+        ChestTemplate.Builder chestTemplate;
+
         Object[] formats = manager.getAllQueues().keySet().toArray();
 
         if(DataManager.getConfigNode().node("GUI-Management", "Custom-Listing-Enabled").getBoolean()){
@@ -931,203 +949,114 @@ public class UIHandler {
             formats = newFormats;
         }
 
-        ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
-                .border(0, 0, 3, 9, filler);
+        LinkedPageButton previous = LinkedPageButton.builder()
+                .display(new ItemStack(PixelmonItems.trade_holder_left))
+                .title("Previous Page")
+                .linkType(LinkType.Previous)
+                .build();
 
+        LinkedPageButton next = LinkedPageButton.builder()
+                .display(new ItemStack(PixelmonItems.trade_holder_right))
+                .title("Next Page")
+                .linkType(LinkType.Next)
+                .build();
 
-        for (Object obj:formats) {
-
+        if (formatButtonList(formats, fromGUI).size() > 18) {
+            chestTemplate = ChestTemplate.builder(5)
+                    .border(0, 0, 5, 9, filler)
+                    .set(0, 3, previous)
+                    .set(0, 5, next)
+                    .rectangle(1, 1, 3, 7, placeHolderButton);
+        } else {
+            chestTemplate = ChestTemplate.builder(3)
+                    .border(0, 0, 3, 9, filler)
+                    .row(1, placeHolderButton);
         }
 
-        for (int i = 0; i < 5; i++) {
 
-        }
 
-        return PaginationHelper.createPagesFromPlaceholders(chestTemplate.build(),
+        return PaginationHelper.createPagesFromPlaceholders(chestTemplate.build(), formatButtonList(formats, fromGUI)
                 ,
-                LinkedPage.builder().title(StringUtil.formattedString("&4"))
+                LinkedPage.builder().title(StringUtil.formattedString("&4Formats"))
                         .template(chestTemplate.build()));
     }
 
+    public GooeyPage TeamPreviewGUI(UUID opponentUUID)
+    {
+        ChestTemplate.Builder chestTemplate = ChestTemplate.builder(5)
+                .border(0, 0, 3, 9, filler);
 
-    public void openFormatList(String fromGUI){
-        Object[] formats = manager.getAllQueues().keySet().toArray();
 
-        if(DataManager.getConfigNode().node("GUI-Management", "Custom-Listing-Enabled").getBoolean()){
-            Object[] newFormats = new Object[formats.length];
-            QueueManager queueManager = PixelmonShowdown.getInstance().queueManager;
-            for(int i = 0; i < newFormats.length; i++){
-                for(int k = 0; k < newFormats.length; k++){
-                    String strFormatName = (String) formats[k];
-                    if(queueManager.findQueue(strFormatName).getFormat().getPositionNum() == i){
-                        newFormats[i] = formats[k];
-                    }
-                }
-            }
-            formats = newFormats;
-        }
+        String opponentUserName = "null";
 
-        HashMap<Integer, Element> elements = new HashMap<>();
-
-        ItemStack itemPrevious = ItemStack.of((ItemType) PixelmonItems.LtradeHolderLeft, 1);
-        itemPrevious.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Previous"));
-        Element previous;
-        if(formatsPageNum > 1){
-            Consumer<Action.Click> previousFormats = action -> {
-                formatsPageNum--;
-                openFormatList(fromGUI);
-            };
-            previous = Element.of(itemPrevious, previousFormats);
-        }
-        else{
-            previous = Element.of(itemPrevious);
-        }
-        elements.put(10, previous);
-
-        for(int i = 0; i < 5; i++){
-            if(formats.length > (formatsPageNum - 1) * 5 + i){
-                String format = (String) formats[(formatsPageNum - 1) * 5 + i];
-                if(format != null){
-                    int pokeBallIndex = ((formatsPageNum - 1) * 5 + i) % PokeBallRegistry.getAll().size();
-                    ItemStack pokeBall = PokeBallRegistry.getAll().get(pokeBallIndex).getBallItem();
-                    itemFormat.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, format));
-                    Consumer<Action.Click> selectArena = action -> {
-                        activeQueueFormat = format;
-                        activeQueueBall = pokeBall.getItem();
-                        switch (fromGUI) {
-                            case "QueueGUI":
-                                UIManager.openUIForcefully(player, QueueGUI());
-                                break;
-                            case "StatsGUI":
-                                UIManager.openUIForcefully(player, StatsGUI());
-                                break;
-                            case "RulesGUI":
-                                UIManager.openUIForcefully(player, RulesGUI());
-                                break;
-                            case "LeaderboardGUI":
-                                UIManager.openUIForcefully(player, LeaderboardGUI());
-                                break;
-                        }
-                    };
-                    Element elementArena = Element.of(itemFormat, selectArena);
-                    elements.put(11 + i, elementArena);
-                }
-            }
-
-            ItemStack itemNext = ItemStack.of((ItemType) PixelmonItems.tradeHolderRight, 1);
-            itemNext.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Next"));
-            Element next;
-            if(formatsPageNum * 5 < formats.length){
-                Consumer<Action.Click> nextFormats = action -> {
-                    formatsPageNum++;
-                    openFormatList(fromGUI);
-                };
-                next = Element.of(itemNext, nextFormats);
-            }
-            else{
-                next = Element.of(itemNext);
-            }
-            elements.put(16, next);
-        }
-
-        ItemStack itemBorder = ItemStack.of(ItemTypes.STAINED_GLASS_PANE,1);
-        itemBorder.offer(Keys.DYE_COLOR, DyeColors.RED);
-        itemBorder.offer(Keys.DISPLAY_NAME, Text.of(""));
-        Element border = Element.of(itemBorder);
-
-        Layout newLayout = Layout.builder().setAll(elements).border(border).build();
-
-        View view = View.builder().archetype(InventoryArchetypes.CHEST)
-                .property(InventoryTitle.of(Text.of(TextColors.RED, TextStyles.BOLD, "Formats"))).build(container);
-
-        view.define(newLayout);
-        view.open(player);
-    }
-
-    public void openTeamPreview(UUID opponentUUID){
-        HashMap<Integer, Element> elements = new HashMap<>();
-
-        ItemStack itemOpponent = ItemStack.of((ItemType) PixelmonItems.trainerEditor,1);
-
-        String displayName = "null";
-        Optional<UserStorageService> userStorage = Sponge.getServiceManager().provide(UserStorageService.class);
-        if(userStorage.get().get(opponentUUID).isPresent()) {
-            User user = userStorage.get().get(opponentUUID).get();
-            displayName = user.getName();
-        }
-        itemOpponent.offer(Keys.DISPLAY_NAME, Text.of(TextColors.RED, displayName));
-        Element elementOpponent = Element.of(itemOpponent);
-        elements.put(1, elementOpponent);
-
-        if(Sponge.getServer().getPlayer(opponentUUID).isPresent()) {
-            Player opponent = Sponge.getServer().getPlayer(opponentUUID).get();
-            EntityPlayerMP oppParticipant = (EntityPlayerMP) opponent;
-            Pokemon[] oppParty = Pixelmon.storageManager.getParty(oppParticipant).getAll();
+        if(PixelmonShowdown.getInstance().server.getPlayerList().getPlayerByUUID(opponentUUID) != null) {
+            ServerPlayerEntity opponent = PixelmonShowdown.getInstance().server.getPlayerList().getPlayerByUUID(opponentUUID);
+            Pokemon[] oppParty = StorageProxy.getParty(opponent).getAll();
             ArrayList<Pokemon> oppPokemonList = new ArrayList<>();
-            for (int i = 0; i < oppParty.length; ++i) {
-                if (oppParty[i] == null) {
+            for (Pokemon value : oppParty) {
+                if (value == null) {
                     continue;
                 }
-                oppPokemonList.add(oppParty[i]);
+                oppPokemonList.add(value);
             }
-
             for (int i = 0; i < oppPokemonList.size(); i++) {
+
                 Pokemon pokemon = oppPokemonList.get(i);
-                ItemStack itemPokemon = getPokemonPhoto(pokemon, pokemon.getForm());
-                itemPokemon.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, pokemon.getSpecies().name));
-                Element elementPokemon = Element.of(itemPokemon);
-                elements.put(2 + i, elementPokemon);
+                ItemStack itemPokemon = getPokemonPhoto(pokemon);
+                GooeyButton pokemonButton = GooeyButton.builder()
+                        .display(itemPokemon)
+                        .title(StringUtil.formattedString("&6" + pokemon.getSpecies().getName()))
+                        .build();
+                chestTemplate.set(2 + i, pokemonButton);
             }
         }
 
-        ServerPlayerEntity playerParticipant =  player;
-        Pokemon[] playerParty = StorageProxy.getParty(playerParticipant).getAll();
+        Pokemon[] playerParty = StorageProxy.getParty(player).getAll();
         ArrayList<Pokemon> playerPokemonList = new ArrayList<>();
-        for(int i = 0; i < playerParty.length; i++){
-            if(playerParty[i] == null) {
+        for (Pokemon value : playerParty) {
+            if (value == null) {
                 continue;
             }
-            playerPokemonList.add(playerParty[i]);
+            playerPokemonList.add(value);
         }
 
         for (int i = 0; i < playerPokemonList.size(); i++) {
             Pokemon pokemon = playerPokemonList.get(i);
             ItemStack itemPokemon = getPokemonPhoto(pokemon);
-            itemPokemon.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, pokemon.getSpecies().name));
             int index = i;
-            Consumer<Action.Click> consChangeStarter = action -> {
-                this.startingPokemon = playerPokemonList.get(index);
-                openTeamPreview(opponentUUID);
-            };
-            Element elementPokemon = Element.of(itemPokemon, consChangeStarter);
-            elements.put(20 + i, elementPokemon);
+            GooeyButton startingPokemon = GooeyButton.builder()
+                    .display(itemPokemon)
+                    .title(StringUtil.formattedString("&6" + pokemon.getSpecies().getName()))
+                    .onClick(b -> {
+                        this.startingPokemon = playerPokemonList.get(index);
+                        openTeamPreview(opponentUUID);
+                    })
+                    .build();
+            chestTemplate.set(20 + i, startingPokemon);
         }
         if(startingPokemon == null) {
-            ItemStack itemStarter = ItemStack.of((ItemType) PixelmonItemsPokeballs.pokeBall, 1);
-            itemStarter.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Starting Pokemon: " + playerPokemonList.get(0).getSpecies().name));
-            Element starter = Element.of(itemStarter);
-            elements.put(19, starter);
+            ItemStack itemStarter = new ItemStack(PixelmonItems.poke_ball);
+            GooeyButton startingPokemon = GooeyButton.builder()
+                    .title(StringUtil.formattedString("&6Starting Pokemon: " +playerPokemonList.get(0).getSpecies().getName()))
+                    .display(itemStarter)
+                    .build();
+            chestTemplate.set(19, startingPokemon);
         }
         else{
-            ItemStack itemStarter = ItemStack.of((ItemType) PixelmonItemsPokeballs.pokeBall, 1);
-            itemStarter.offer(Keys.DISPLAY_NAME, Text.of(TextColors.GOLD, "Starting Pokemon: " + startingPokemon.getSpecies().name));
-            Element starter = Element.of(itemStarter);
-            elements.put(19, starter);
+            ItemStack itemStarter = new ItemStack(PixelmonItems.poke_ball);
+            GooeyButton startingPokemon = GooeyButton.builder()
+                    .title(StringUtil.formattedString("&6Starting Pokemon: " + this.startingPokemon.getSpecies()))
+                    .display(itemStarter)
+                    .build();
+            chestTemplate.set(19, startingPokemon);
         }
 
-        ItemStack itemBorder = ItemStack.of(ItemTypes.STAINED_GLASS_PANE,1);
-        itemBorder.offer(Keys.DYE_COLOR, DyeColors.RED);
-        itemBorder.offer(Keys.DISPLAY_NAME, Text.of(""));
 
-        Element border = Element.of(itemBorder);
+        return GooeyPage.builder().template(chestTemplate.build()).title(StringUtil.formattedString("&4Team Preview")).build();
+    }
 
-        Layout newLayout = Layout.builder().setAll(elements).row(border, 1).set(border, 0, 8, 18, 26).build();
-
-        View view = View.builder().archetype(InventoryArchetypes.CHEST)
-                .property(InventoryTitle.of(Text.of(TextColors.RED, TextStyles.BOLD, "Team Preview"))).build(container);
-
-        view.define(newLayout);
-        view.open(player);
+    public void openTeamPreview(UUID opponentUUID){
+       UIManager.openUIForcefully(player, TeamPreviewGUI(opponentUUID));
     }
 
     public ItemStack getPokemonPhoto(Pokemon pokemon)

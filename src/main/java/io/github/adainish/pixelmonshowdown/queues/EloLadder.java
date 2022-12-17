@@ -38,8 +38,8 @@ public class EloLadder {
 
     //Save all profiles to config object
     public void saveAllProfiles(){
-        for(int i = 0; i < activeEloProfiles.size(); i++){
-            activeEloProfiles.get(i).saveProfile();
+        for (EloProfile activeEloProfile : activeEloProfiles) {
+            activeEloProfile.saveProfile();
         }
         activeEloProfiles.clear();
     }
@@ -106,7 +106,7 @@ public class EloLadder {
         EloProfile profile = getProfile(player);
         if(profile != null){
             eloProfilesByElo.remove(profile);
-            eloProfilesByUUID.remove(profile);
+            eloProfilesByUUID.remove(player);
         }
     }
 
