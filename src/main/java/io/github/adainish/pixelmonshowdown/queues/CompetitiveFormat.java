@@ -1,28 +1,20 @@
 package io.github.adainish.pixelmonshowdown.queues;
 
-import com.pixelmonmod.api.pokemon.requirement.impl.FormRequirement;
-import com.pixelmonmod.pixelmon.Pixelmon;
 import com.pixelmonmod.pixelmon.api.battles.BattleType;
 import com.pixelmonmod.pixelmon.api.battles.attack.AttackRegistry;
 import com.pixelmonmod.pixelmon.api.pokemon.Element;
 import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
 import com.pixelmonmod.pixelmon.api.pokemon.PokemonBase;
-import com.pixelmonmod.pixelmon.api.pokemon.ability.Ability;
 import com.pixelmonmod.pixelmon.api.pokemon.ability.AbilityRegistry;
 import com.pixelmonmod.pixelmon.api.pokemon.ability.AbstractAbility;
 import com.pixelmonmod.pixelmon.api.pokemon.species.Species;
 import com.pixelmonmod.pixelmon.api.pokemon.species.Stats;
 import com.pixelmonmod.pixelmon.api.registries.PixelmonSpecies;
-import com.pixelmonmod.pixelmon.battles.api.rules.BattleProperty;
 import com.pixelmonmod.pixelmon.battles.api.rules.BattleRuleRegistry;
 import com.pixelmonmod.pixelmon.battles.api.rules.BattleRules;
 import com.pixelmonmod.pixelmon.battles.api.rules.clauses.BattleClause;
 import com.pixelmonmod.pixelmon.battles.api.rules.clauses.BattleClauseRegistry;
 import com.pixelmonmod.pixelmon.battles.api.rules.clauses.type.*;
-import com.pixelmonmod.pixelmon.battles.api.rules.property.BattleTypeProperty;
-import com.pixelmonmod.pixelmon.battles.api.rules.property.TeamPreviewProperty;
-import com.pixelmonmod.pixelmon.battles.attacks.Attack;
-import com.pixelmonmod.pixelmon.battles.attacks.ImmutableAttack;
 import com.pixelmonmod.pixelmon.enums.heldItems.EnumHeldItems;
 import io.github.adainish.pixelmonshowdown.PixelmonShowdown;
 import io.github.adainish.pixelmonshowdown.clauses.MinLevelClause;
@@ -61,30 +53,19 @@ public class CompetitiveFormat {
 
     //Get Pokemon clause
     public PokemonBanClause getPokemonClause(String pokemonClause){
-        //Check if pokemon is a form
-        if(pokemonClause.contains("-")) {
+        if(pokemonClause.contains("_")) {
             //Check if form exists
-
-
-            if (PixelmonSpecies.get(pokemonClause).isPresent()) {
-                Species form = PixelmonSpecies.get(pokemonClause).get().getValueUnsafe();
-
-                String[] splitString = pokemonClause.split("-");
-
-
+            String[] splitString = pokemonClause.split("_");
+            //Get pokemon name & form from string
+            String pokemon = splitString[0];
+            String suffix = splitString[1].toLowerCase();
+            if (PixelmonSpecies.get(pokemon).isPresent()) {
+                Species form = PixelmonSpecies.get(pokemon).get().getValueUnsafe();
                 if (splitString.length == 2) {
-
-                    //Get pokemon name & form from string
-                    String pokemon = splitString[0];
-                    String suffix = "-" + splitString[1].toLowerCase();
-
-
-                    //Find object for suffix & return it
-                    Object[] forms = form.getForms().toArray();
-                    for (Object formsList : forms) {
-                        Stats castF = (Stats) formsList;
-                        if (castF.getName().equals(suffix)) {
-                            PokemonBase pokemonBase = new PokemonBase(form, castF);
+                    for (Stats st:form.getForms()) {
+                        if (st.getName().equalsIgnoreCase(suffix))
+                        {
+                            PokemonBase pokemonBase = new PokemonBase(form, st);
                             return new PokemonBanClause(pokemonClause, pokemonBase);
                         }
                     }
@@ -102,7 +83,10 @@ public class CompetitiveFormat {
 
     //Adds Pokemon clause to rules
     public void addPokemonClause(String pokemonClause){
-
+        String[] split = new String[]{};
+        if (pokemonClause.contains("_")) {
+            split = pokemonClause.split("_");
+        }
         if(pokemonClause.equals("Legendaries")) { //Ban all legends if Legendaries is in list
             strPokemonClauses.add("Legendaries");
             for (int i :PixelmonSpecies.getLegendaries()) {
@@ -119,7 +103,14 @@ public class CompetitiveFormat {
                 pokemonClauses.add(clause);
             }
         }
-        else if(PixelmonSpecies.get(pokemonClause).isPresent()) {
+        else if(pokemonClause.contains("_") && PixelmonSpecies.get(split[0]).isPresent()) {
+            PokemonBanClause clause = getPokemonClause(pokemonClause);
+            if(clause != null){
+                strPokemonClauses.add(pokemonClause);
+                pokemonClauses.add(clause);
+            }
+        } else if (PixelmonSpecies.get(pokemonClause).isPresent())
+        {
             PokemonBanClause clause = getPokemonClause(pokemonClause);
             if(clause != null){
                 strPokemonClauses.add(pokemonClause);
@@ -131,6 +122,15 @@ public class CompetitiveFormat {
         }
     }
 
+    public EnumHeldItems getHeldItem(String s) {
+
+        for (EnumHeldItems h:EnumHeldItems.values()) {
+            if (h.name().toLowerCase().equalsIgnoreCase(s))
+                return h;
+        }
+
+        return null;
+    }
     //Gets item clause from String
     public ItemPreventClause getItemClause(String itemClause){
         //Pixelmon's item enums dont follow consistent convention, so have to check which one the item is...
@@ -149,8 +149,6 @@ public class CompetitiveFormat {
             itemCamelCase = itemCamelCase.substring(0, spaceIndex) + upperCase + itemCamelCase.substring(spaceIndex + 2);
         }
 
-        boolean errorCaught1 = false;
-        boolean errorCaught2 = false;
         //Check if item exists
         try{
             if(itemLowerCase.equals("megastones")){
@@ -160,23 +158,21 @@ public class CompetitiveFormat {
                 return new ItemPreventClause(itemClause, EnumHeldItems.zCrystal);
             }
             else {
-                return new ItemPreventClause(itemClause, EnumHeldItems.valueOf(itemLowerCase));
+                return new ItemPreventClause(itemClause, getHeldItem(itemLowerCase));
             }
         }
         catch(Exception e){
-            errorCaught1 = true;
+            e.printStackTrace();
         }
 
         try{
-            return new ItemPreventClause(itemClause, EnumHeldItems.valueOf(itemCamelCase));
+            return new ItemPreventClause(itemClause, getHeldItem(itemLowerCase));
         }
         catch(Exception e){
-            errorCaught2 = true;
+            e.printStackTrace();
         }
 
-        if(errorCaught1 && errorCaught2){
-            PixelmonShowdown.getInstance().log.error("Error Adding Ability Clause: " + itemClause + ". Please check format config for errors.");
-        }
+        PixelmonShowdown.getInstance().log.error("Error Adding Ability Clause: " + itemClause + ". Please check format config for errors.");
         return null;
     }
 
@@ -221,7 +217,7 @@ public class CompetitiveFormat {
             }
         }
         catch (Exception e){
-            PixelmonShowdown.getInstance().log.error("Error Adding Ability Clause: " + moveClause + ". Please check format config for errors.");
+            PixelmonShowdown.getInstance().log.error("Error Adding Move Clause: " + moveClause + ". Please check format config for errors.");
         }
         return null;
     }
@@ -398,36 +394,37 @@ public class CompetitiveFormat {
             List<String> strMoveClauses = DataManager.getFormatsNode().node("Formats", formatName, "Move-Clauses").getList(TypeToken.get(String.class));
 
 
-            for (int i = 0; i < strPokemonClauses.size(); i++) {
-                addPokemonClause(strPokemonClauses.get(i));
+            for (String strPokemonClause : strPokemonClauses) {
+                addPokemonClause(strPokemonClause);
             }
 
-            for (int i = 0; i < strItemClauses.size(); i++) {
-                addItemClause(strItemClauses.get(i));
+            for (String strItemClause : strItemClauses) {
+                addItemClause(strItemClause);
             }
 
-            for (int i = 0; i < strAbilityClauses.size(); i++) {
-                addAbilityClause(strAbilityClauses.get(i));
+            for (String strAbilityClause : strAbilityClauses) {
+                addAbilityClause(strAbilityClause);
             }
 
-            for(int i = 0; i < strMoveClauses.size(); i++){
-                addMoveClause(strMoveClauses.get(i));
+            for (String strMoveClause : strMoveClauses) {
+                addMoveClause(strMoveClause);
             }
 
-            Iterator itr = DataManager.getFormatsNode().node("Formats", formatName, "Complex-Clauses").childrenList().iterator();
+            Iterator<CommentedConfigurationNode> itr = DataManager.getFormatsNode().node("Formats", formatName, "Complex-Clauses").childrenList().iterator();
 
             while(itr.hasNext()){
                 try {
-                    CommentedConfigurationNode node = (CommentedConfigurationNode) itr.next();
-                    Iterator strItr = node.childrenList().iterator();
+                    CommentedConfigurationNode node = itr.next();
+                    Iterator<CommentedConfigurationNode> strItr = node.childrenList().iterator();
                     ArrayList<String> strList = new ArrayList<>();
                     while(strItr.hasNext()){
                         try{
-                            String clause = (String) (strItr.next());
+                            String clause = strItr.next().getString();
                             strList.add(clause);
                         }
                         catch(Exception e){
                             PixelmonShowdown.getInstance().log.error("PixelmonShowdown has encountered an error loading complex causes! Check configuration for errors!");
+                            e.printStackTrace();
                         }
                     }
 
@@ -436,6 +433,7 @@ public class CompetitiveFormat {
                 catch(Exception e){
                     PixelmonShowdown.getInstance().log.error("PixelmonShowdown has encountered an error loading complex causes! Check configuration for errors!");
                     PixelmonShowdown.getInstance().log.error(e.getMessage());
+                    e.printStackTrace();
                 }
 
             }
