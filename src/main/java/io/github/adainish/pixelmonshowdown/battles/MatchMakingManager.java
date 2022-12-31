@@ -99,7 +99,7 @@ public class MatchMakingManager {
                 Task.builder().execute(() -> {
                     player1UI.openTeamPreview(player2UUID);
                     player2UI.openTeamPreview(player1UUID);
-                }).delay(20L * 60 * (WARM_UP - PREVIEW_TIME)).build();
+                }).iterations(1).delay(20L * 60 * (WARM_UP - PREVIEW_TIME)).build();
 
                 Task.builder().execute(() -> {
                     UIManager.closeUI(player1);
@@ -108,14 +108,14 @@ public class MatchMakingManager {
                     Pokemon player2Starter = player2UI.getStartingPokemon();
 
                     MatchMakingManager.startBattle(player1UUID, player1PokemonList, player1Starter, player2UUID, player2PokemonList, player2Starter, format);
-                }).delay(20L * 60 * WARM_UP).build();
+                }).iterations(1).delay(20L * 60 * WARM_UP).build();
             }
             else{
                 Task.builder().execute(() -> {
                     UIManager.closeUI(player1);
                     UIManager.closeUI(player2);
                     MatchMakingManager.startBattle(player1UUID, player1PokemonList, null, player2UUID, player2PokemonList, null, format);
-                }).delay(20L * 60 * WARM_UP).build();
+                }).iterations(1).delay(20L * 60 * WARM_UP).build();
             }
         }
     }
@@ -150,14 +150,14 @@ public class MatchMakingManager {
 
             //Check if either player's full party is fainted
             boolean player1PartyFainted = true;
-            for (int i = 0; i < player1Party.length; i++) {
-                if (player1Party[i] == null) {
+            for (Pokemon value : player1Party) {
+                if (value == null) {
                     continue;
                 }
-                if(player1Party[i].getHealth() != 0){
+                if (value.getHealth() != 0) {
                     player1PartyFainted = false;
                 }
-                player1PokemonList.add(player1Party[i]);
+                player1PokemonList.add(value);
             }
 
             boolean player2PartyFainted = true;
@@ -322,8 +322,6 @@ public class MatchMakingManager {
         }
         else{
             StringTextComponent playerNotFound = new StringTextComponent(StringUtil.formattedString("&f[&4Pixelmon Showdown&f] &6"));
-//            Text playerNotFound = Text.of(TextColors.WHITE, "[", TextColors.RED, "Pixelmon Showdown", TextColors.WHITE,
-//                    "]", TextColors.GOLD, " A player disconnected! Battle cancelled.");
             if(PixelmonShowdown.getInstance().server.getPlayerList().getPlayerByUUID(player1UUID) != null){
                 PixelmonShowdown.getInstance().server.getPlayerList().getPlayerByUUID(player1UUID).sendMessage(playerNotFound, player1UUID);
             }

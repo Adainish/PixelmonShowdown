@@ -64,8 +64,8 @@ public class CompetitiveQueue {
 
     //Adds a player to pre-match
     public void addPlayerInPreMatch(UUID player){
-        if(hasPlayerInQueue(player) == true && hasPlayerInPreMatch(player) == false
-                && hasPlayerInMatch(player) == false){
+        if(hasPlayerInQueue(player) && !hasPlayerInPreMatch(player)
+                && !hasPlayerInMatch(player)){
             ladder.getProfile(player).setTimeVar(0);
             playersInPreMatch.add(player);
             playersInQueue.remove(player);
@@ -74,8 +74,8 @@ public class CompetitiveQueue {
 
     //Adds a player to a match
     public void addPlayerInMatch(UUID player){
-        if(hasPlayerInQueue(player) == false && hasPlayerInPreMatch(player) == true
-                && hasPlayerInMatch(player) == false){
+        if(!hasPlayerInQueue(player) && hasPlayerInPreMatch(player)
+                && !hasPlayerInMatch(player)){
             playersInMatch.add(player);
             playersInPreMatch.remove(player);
         }

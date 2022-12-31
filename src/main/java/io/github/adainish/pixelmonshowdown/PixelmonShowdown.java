@@ -1,9 +1,11 @@
 package io.github.adainish.pixelmonshowdown;
 
+import com.pixelmonmod.pixelmon.Pixelmon;
 import io.github.adainish.pixelmonshowdown.arenas.ArenaManager;
 import io.github.adainish.pixelmonshowdown.commands.ArenaCommand;
 import io.github.adainish.pixelmonshowdown.commands.DisplayCommand;
 import io.github.adainish.pixelmonshowdown.commands.ShowdownCommand;
+import io.github.adainish.pixelmonshowdown.listener.BattleManager;
 import io.github.adainish.pixelmonshowdown.queues.QueueManager;
 import io.github.adainish.pixelmonshowdown.util.DataManager;
 import io.github.adainish.pixelmonshowdown.wrapper.PermissionWrapper;
@@ -18,12 +20,12 @@ import net.minecraftforge.fml.event.server.FMLServerStoppingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLConfig;
 import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.fml.server.ServerLifecycleHooks;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 
-// The value here should match an entry in the META-INF/mods.toml file
 @Mod("pixelmonshowdown")
 public class PixelmonShowdown {
     private static PixelmonShowdown instance;
@@ -45,10 +47,8 @@ public class PixelmonShowdown {
     public PermissionWrapper permissionWrapper;
 
     public PixelmonShowdown() {
-        // Register the setup method for modloading
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
         instance = this;
-        // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
     }
 
@@ -75,10 +75,11 @@ public class PixelmonShowdown {
     // You can use SubscribeEvent and let the Event Bus discover methods to call
     @SubscribeEvent
     public void onServerStarted(FMLServerStartedEvent event) {
-
+        server = ServerLifecycleHooks.getCurrentServer();
         queueManager.loadFromConfig();
         arenaManager.loadArenas();
         DataManager.startAutoSave();
+        Pixelmon.EVENT_BUS.register(new BattleManager());
         log.info("PixelmonShowdown " + VERSION + " Successfully Launched");
     }
 

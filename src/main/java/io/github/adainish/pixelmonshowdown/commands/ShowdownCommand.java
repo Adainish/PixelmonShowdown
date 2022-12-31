@@ -16,9 +16,10 @@ public class ShowdownCommand {
                 .executes(cc -> {
                     try {
                         UIHandler uiHandler = new UIHandler(cc.getSource().asPlayer());
-                        UIManager.openUIForcefully(cc.getSource().asPlayer(), uiHandler.MainPage());
+                        UIManager.openUIForcefully(cc.getSource().asPlayer(), uiHandler.MainPage(cc.getSource().asPlayer().getUniqueID()));
                     } catch (Exception e) {
-                        cc.getSource().sendFeedback(new StringTextComponent(""), true);
+                        e.printStackTrace();
+                        cc.getSource().sendFeedback(new StringTextComponent("Something went wrong using this command!"), true);
                     }
 
                     return com.mojang.brigadier.Command.SINGLE_SUCCESS;

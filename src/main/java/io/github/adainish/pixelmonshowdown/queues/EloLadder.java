@@ -65,6 +65,7 @@ public class EloLadder {
 
             int index = binaryInsertionSort(eloProfilesByElo, profile);
             eloProfilesByElo.add(index, profile);
+            profile.saveProfile();
         }
     }
 

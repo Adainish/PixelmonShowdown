@@ -41,8 +41,8 @@ public class UIHandler {
     private ItemStack activeQueueBall = new ItemStack(PixelmonItems.poke_ball);
     private String activeArena = null;
     private final ItemStack activeArenaBall = new ItemStack(PixelmonItems.poke_ball);
-    private final ServerPlayerEntity player;
-    private final UUID playerUUID;
+    private ServerPlayerEntity player;
+    private UUID playerUUID;
     private final int ELO_FLOOR = DataManager.getConfigNode().node("Elo-Management", "Elo-Range", "Elo-Floor").getInt();
     private Pokemon startingPokemon = null;
 
@@ -57,10 +57,12 @@ public class UIHandler {
 
 
 
-    public Page MainPage() {
+    public Page MainPage(UUID uuid) {
         ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
                 .border(0, 0, 3, 9, filler);
 
+        this.playerUUID = uuid;
+        this.player = PixelmonShowdown.getInstance().server.getPlayerList().getPlayerByUUID(uuid);
         //no button
         GooeyButton queue;
         if (manager.isPlayerInQueue(playerUUID)) {
@@ -156,6 +158,8 @@ public class UIHandler {
         chestTemplate.set(1, 7, itemRules);
         return GooeyPage.builder().title("Pixelmon Showdown").template(chestTemplate.build()).build();
     }
+
+
     public GooeyPage QueueGUI()
     {
         ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
@@ -193,7 +197,7 @@ public class UIHandler {
             }
 
             if(!doesValidate) {
-                pokemonItemTitle = "&4Team is not Eligible";
+                pokemonItemTitle = "&4Team is not Eligible. Clause:" + rules.validateTeam(pokemonList);
             }
             else{
                 pokemonItemTitle = "&aTeam Eligible";
@@ -213,10 +217,10 @@ public class UIHandler {
                     .onClick(b -> {
                         CompetitiveQueue queue = manager.findQueue(activeQueueFormat);
                         if(queue != null){
-                            queue.addPlayerInQueue(playerUUID);
-                            MatchMakingManager.runTask();
-                            player.sendMessage(new StringTextComponent(StringUtil.formattedString("&f[&6Pixelmon Showdown&f] &6You have entered queue!")), playerUUID);
                             UIManager.closeUI(b.getPlayer());
+                            queue.addPlayerInQueue(b.getPlayer().getUniqueID());
+                            MatchMakingManager.runTask();
+                            b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&f[&6Pixelmon Showdown&f] &6You have entered queue!")), playerUUID);
                         }
                     })
                     .build();
@@ -396,7 +400,7 @@ public class UIHandler {
         GooeyButton back = GooeyButton.builder()
                 .display(new ItemStack(PixelmonItems.red_card))
                 .title(StringUtil.formattedString("&6Go Back"))
-                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage()))
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage(playerUUID)))
                 .build();
 
         chestTemplate.set(1, 1, itemQueueType);
@@ -534,7 +538,7 @@ public class UIHandler {
         GooeyButton back = GooeyButton.builder()
                 .title(StringUtil.formattedString("&6Go Back"))
                 .display(new ItemStack(PixelmonItems.red_card))
-                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage()))
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage(playerUUID)))
                 .build();
 
 
@@ -616,7 +620,7 @@ public class UIHandler {
         GooeyButton back = GooeyButton.builder()
                 .title(StringUtil.formattedString("&6Go Back"))
                 .display(new ItemStack(PixelmonItems.red_card))
-                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage()))
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage(playerUUID)))
                 .build();
 
         if (eloProfileGeneration().size() > 18) {
@@ -799,7 +803,7 @@ public class UIHandler {
         GooeyButton back = GooeyButton.builder()
                 .title(StringUtil.formattedString("&6Go Back"))
                 .display(new ItemStack(PixelmonItems.red_card))
-                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage()))
+                .onClick(b -> UIManager.openUIForcefully(b.getPlayer(), MainPage(playerUUID)))
                 .build();
 
         if (arenaViewButtons().size() > 18) {
