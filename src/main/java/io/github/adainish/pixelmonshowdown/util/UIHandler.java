@@ -11,6 +11,7 @@ import ca.landonjw.gooeylibs2.api.page.GooeyPage;
 import ca.landonjw.gooeylibs2.api.page.LinkedPage;
 import ca.landonjw.gooeylibs2.api.page.Page;
 import ca.landonjw.gooeylibs2.api.template.types.ChestTemplate;
+import com.mojang.authlib.GameProfile;
 import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
 import com.pixelmonmod.pixelmon.api.pokemon.item.pokeball.PokeBallRegistry;
 import com.pixelmonmod.pixelmon.api.registries.PixelmonItems;
@@ -28,8 +29,11 @@ import io.github.adainish.pixelmonshowdown.queues.EloProfile;
 import io.github.adainish.pixelmonshowdown.queues.QueueManager;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.player.ServerPlayerEntity;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.CompoundNBT;
+import net.minecraft.nbt.NBTUtil;
 import net.minecraft.util.text.StringTextComponent;
 
 import java.util.*;
@@ -421,13 +425,7 @@ public class UIHandler {
 
 
         ItemStack itemQueueTypeStack = activeQueueBall;
-        String itemQueueTitle;
-        if(activeQueueFormat == null){
-            itemQueueTitle = "&6Format: Not Chosen";
-        }
-        else {
-            itemQueueTitle = "&6Format: " + activeQueueFormat;
-        }
+        String itemQueueTitle = activeQueueFormat == null ? "&6Format: Not Chosen" : "&6Format: " + activeQueueFormat;
         GooeyButton itemQueueType = GooeyButton.builder()
                 .display(itemQueueTypeStack)
                 .title(StringUtil.formattedString(itemQueueTitle))
@@ -565,11 +563,21 @@ public class UIHandler {
                     if (profile == null)
                         continue;
 
-                    ItemStack itemPlayer1 = new ItemStack(Items.PLAYER_HEAD);
+                    Item playerSkull = Items.PLAYER_HEAD;
+                    CompoundNBT nbt = new CompoundNBT();
+                    ItemStack skullStack;
+                    GameProfile gameprofile = PixelmonShowdown.getInstance().server.getPlayerProfileCache().getProfileByUUID(profile.getUUID());
+
+                    if (gameprofile != null) {
+                        nbt.put("SkullOwner", NBTUtil.writeGameProfile(new CompoundNBT(), gameprofile));
+                        skullStack = new ItemStack(playerSkull);
+                        skullStack.setTag(nbt);
+                    } else skullStack = new ItemStack(Items.SKELETON_SKULL);
+
                     //add UUID to player skin
 
                     Button profileButton = GooeyButton.builder()
-                            .display(itemPlayer1)
+                            .display(skullStack)
                             .title(StringUtil.formattedString("&6" + profile.getPlayerName()))
                             .lore(StringUtil.formattedArrayList(Collections.singletonList("&aElo: " + profile.getElo())))
                             .build();
@@ -600,13 +608,7 @@ public class UIHandler {
 
         ItemStack itemQueueType = activeQueueBall;
 
-        String itemQueueTypeTitle;
-        if(activeQueueFormat == null){
-            itemQueueTypeTitle = "&6Format: Not Chosen";
-        }
-        else {
-            itemQueueTypeTitle = "&6Format: " + activeQueueFormat;
-        }
+        String itemQueueTypeTitle = activeQueueFormat == null ? "&6Format: Not Chosen" : "&6Format: " + activeQueueFormat;
         List<String> lore = new ArrayList<>();
         lore.add("&aClick to see available formats!");
 
@@ -650,13 +652,7 @@ public class UIHandler {
         String itemArenasTitle;
         List<String> lore = new ArrayList<>();
         lore.add("&aClick to see available arenas!");
-        if(activeArena == null){
-            itemArenasTitle = "&6Arena: Not Chosen";
-
-        }
-        else{
-            itemArenasTitle = "&6Arena: " + activeArena;
-        }
+        itemArenasTitle = activeArena == null ? "&6Arena: Not Chosen" : "&6Arena: " + activeArena;
 
         GooeyButton arenas = GooeyButton.builder()
                 .title(StringUtil.formattedString(itemArenasTitle))
@@ -987,7 +983,7 @@ public class UIHandler {
 
     public GooeyPage TeamPreviewGUI(UUID opponentUUID)
     {
-        ChestTemplate.Builder chestTemplate = ChestTemplate.builder(5)
+        ChestTemplate.Builder chestTemplate = ChestTemplate.builder(3)
                 .border(0, 0, 3, 9, filler);
 
 

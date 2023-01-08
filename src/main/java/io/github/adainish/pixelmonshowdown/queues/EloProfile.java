@@ -1,5 +1,6 @@
 package io.github.adainish.pixelmonshowdown.queues;
 
+import com.pixelmonmod.pixelmon.api.util.helpers.RandomHelper;
 import io.github.adainish.pixelmonshowdown.util.DataManager;
 import org.spongepowered.configurate.serialize.SerializationException;
 
@@ -28,7 +29,7 @@ public class EloProfile {
         this.uuid = uuid;
         this.playerName = " ";
         this.formatName = formatName;
-        this.elo = ELO_FLOOR;
+        this.elo = 1000;
         this.wins = 0;
         this.losses = 0;
         this.winRate = 0.0;
@@ -125,15 +126,12 @@ public class EloProfile {
         double kFactor = getKFactor();
 
         int newElo = (int) (Math.round((elo + kFactor * (1.0 - getExpectedOutcome(oppElo)))));
-
+        if (newElo <= 1000)
+        {
+            newElo = 1000 + RandomHelper.getRandomNumberBetween(11, 31);
+        }
         //Set elo back to floor if it's below
-        if(newElo < ELO_FLOOR) {
-            this.elo = ELO_FLOOR;
-        }
-        else{
-            this.elo = newElo;
-        }
-
+        this.elo = Math.max(newElo, ELO_FLOOR);
         this.wins++;
 
         this.winRate = Math.round(wins * 100.0 / (wins + losses));
@@ -144,14 +142,12 @@ public class EloProfile {
         double kFactor = getKFactor();
 
         int newElo = (int) (Math.round((elo + kFactor * (0.0 - getExpectedOutcome(oppElo)))));
-
+        if (newElo <= 1000)
+        {
+            newElo = 1000;
+        }
         //Set elo back to floor if it's below
-        if(newElo < ELO_FLOOR) {
-            this.elo = ELO_FLOOR;
-        }
-        else{
-            this.elo = newElo;
-        }
+        this.elo = Math.max(newElo, ELO_FLOOR);
 
         this.losses++;
 

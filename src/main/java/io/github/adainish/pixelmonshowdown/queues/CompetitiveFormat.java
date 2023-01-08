@@ -10,6 +10,7 @@ import com.pixelmonmod.pixelmon.api.pokemon.ability.AbstractAbility;
 import com.pixelmonmod.pixelmon.api.pokemon.species.Species;
 import com.pixelmonmod.pixelmon.api.pokemon.species.Stats;
 import com.pixelmonmod.pixelmon.api.registries.PixelmonSpecies;
+import com.pixelmonmod.pixelmon.api.util.helpers.RandomHelper;
 import com.pixelmonmod.pixelmon.battles.api.rules.BattleRuleRegistry;
 import com.pixelmonmod.pixelmon.battles.api.rules.BattleRules;
 import com.pixelmonmod.pixelmon.battles.api.rules.clauses.BattleClause;
@@ -19,6 +20,7 @@ import com.pixelmonmod.pixelmon.enums.heldItems.EnumHeldItems;
 import io.github.adainish.pixelmonshowdown.PixelmonShowdown;
 import io.github.adainish.pixelmonshowdown.clauses.MinLevelClause;
 import io.github.adainish.pixelmonshowdown.clauses.MonoTypeClause;
+import io.github.adainish.pixelmonshowdown.randoms.RentalPokemon;
 import io.github.adainish.pixelmonshowdown.util.DataManager;
 import io.leangen.geantyref.TypeToken;
 import org.spongepowered.configurate.CommentedConfigurationNode;
@@ -43,12 +45,33 @@ public class CompetitiveFormat {
     private List<String> strItemClauses = new ArrayList<>();
     private List<String> strAbilityClauses = new ArrayList<>();
     private List<String> strMoveClauses = new ArrayList<>();
+    private boolean isRandomBattle = false;
     private int complexNum = 0;
 
     private boolean teamPreview = false;
 
     public CompetitiveFormat(String formatName){
         this.formatName = formatName;
+    }
+
+    public List<Pokemon> generateRentalTeam()
+    {
+        List<RentalPokemon> rentalPokemons = new ArrayList <>();
+        List<Pokemon> pokemonList = new ArrayList <>();
+
+        for (int i = 0; i < 6; i++) {
+            if (i >= DataManager.rentalWrapper.rentalPokemonCache.size())
+                break;
+            RentalPokemon rentalPokemon = RandomHelper.getRandomElementFromCollection(DataManager.rentalWrapper.rentalPokemonCache.values());
+            if (rentalPokemons.contains(rentalPokemon))
+                continue;
+            rentalPokemons.add(rentalPokemon);
+        }
+        for (RentalPokemon p:rentalPokemons) {
+            pokemonList.add(p.getPokemon());
+        }
+
+        return pokemonList;
     }
 
     //Get Pokemon clause
@@ -304,6 +327,8 @@ public class CompetitiveFormat {
             strBattleRules.add("Team Preview");
         }
 
+        setRandomBattle(DataManager.getFormatsNode("Formats", formatName, "RandomBattles").getBoolean());
+
         String monotype = DataManager.getFormatsNode().node("Formats", formatName, "Battle-Rules", "Monotype").getString();
         if(monotype != null) {
             if (!monotype.equals("None")){
@@ -455,5 +480,13 @@ public class CompetitiveFormat {
             }
         }
         return caughtClauses;
+    }
+
+    public boolean isRandomBattle() {
+        return isRandomBattle;
+    }
+
+    public void setRandomBattle(boolean randomBattle) {
+        isRandomBattle = randomBattle;
     }
 }

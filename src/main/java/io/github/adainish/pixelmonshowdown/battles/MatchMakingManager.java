@@ -3,6 +3,8 @@ package io.github.adainish.pixelmonshowdown.battles;
 import ca.landonjw.gooeylibs2.api.UIManager;
 import ca.landonjw.gooeylibs2.implementation.tasks.Task;
 import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
+import com.pixelmonmod.pixelmon.api.storage.PCStorage;
+import com.pixelmonmod.pixelmon.api.storage.PlayerPartyStorage;
 import com.pixelmonmod.pixelmon.api.storage.StorageProxy;
 import com.pixelmonmod.pixelmon.battles.BattleRegistry;
 import com.pixelmonmod.pixelmon.battles.api.rules.BattleRules;
@@ -21,6 +23,7 @@ import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.util.text.StringTextComponent;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class MatchMakingManager {
@@ -38,7 +41,7 @@ public class MatchMakingManager {
         if (!isRunning) {
             isRunning = true;
             matchMake = Task.builder().execute(MatchMakingManager::matchMake).interval(
-                    20L * 60 * INTERVAL ).infinite().build();
+                    20L * INTERVAL ).infinite().build();
         }
     }
 
@@ -71,12 +74,46 @@ public class MatchMakingManager {
             player1.sendMessage(textBattleStarting, player1UUID);
             player2.sendMessage(textBattleStarting, player2UUID);
 
+            PlayerPartyStorage ppsOne = StorageProxy.getParty(player1);
+            PCStorage pcsOne = StorageProxy.getPCForPlayer(player1);
+
+            PlayerPartyStorage ppsTwo = StorageProxy.getParty(player2);
+            PCStorage pcsTwo = StorageProxy.getPCForPlayer(player1);
+
+            if (format.isRandomBattle())
+            {
+                //remove party pokemon and add to pc for player 1
+                for (int i = 0; i < 6; i++) {
+                    Pokemon p = ppsOne.get(i);
+                    if (p != null)
+                    {
+                        pcsOne.add(p);
+                        ppsOne.set(i, null);
+                    }
+                }
+                //remove party pokemon and add to pc for player 2
+                for (int i = 0; i < 6; i++) {
+                    Pokemon p = ppsTwo.get(i);
+                    if (p != null)
+                    {
+                        pcsTwo.add(p);
+                        ppsTwo.set(i, null);
+                    }
+                }
+                //do team gen
+                List <Pokemon> teamOne = format.generateRentalTeam();
+                List <Pokemon> teamTwo = format.generateRentalTeam();
+
+                teamOne.forEach(ppsOne::add);
+                teamTwo.forEach(ppsTwo::add);
+            }
+
             Pokemon[] player1Party = StorageProxy.getParty(player1).getAll();
             Pokemon[] player2Party = StorageProxy.getParty(player2).getAll();
             ArrayList<Pokemon> player1PokemonList = new ArrayList<>();
             ArrayList<Pokemon> player2PokemonList = new ArrayList<>();
 
-            boolean player1PartyFainted = true;
+
             for (Pokemon value : player1Party) {
                 if (value == null) {
                     continue;
@@ -84,7 +121,6 @@ public class MatchMakingManager {
                 player1PokemonList.add(value);
             }
 
-            boolean player2PartyFainted = true;
             for (Pokemon pokemon : player2Party) {
                 if (pokemon == null) {
                     continue;
@@ -99,7 +135,7 @@ public class MatchMakingManager {
                 Task.builder().execute(() -> {
                     player1UI.openTeamPreview(player2UUID);
                     player2UI.openTeamPreview(player1UUID);
-                }).iterations(1).delay(20L * 60 * (WARM_UP - PREVIEW_TIME)).build();
+                }).iterations(1).delay(20L * (WARM_UP - PREVIEW_TIME)).build();
 
                 Task.builder().execute(() -> {
                     UIManager.closeUI(player1);
@@ -108,14 +144,14 @@ public class MatchMakingManager {
                     Pokemon player2Starter = player2UI.getStartingPokemon();
 
                     MatchMakingManager.startBattle(player1UUID, player1PokemonList, player1Starter, player2UUID, player2PokemonList, player2Starter, format);
-                }).iterations(1).delay(20L * 60 * WARM_UP).build();
+                }).iterations(1).delay(20L * WARM_UP).build();
             }
             else{
                 Task.builder().execute(() -> {
                     UIManager.closeUI(player1);
                     UIManager.closeUI(player2);
                     MatchMakingManager.startBattle(player1UUID, player1PokemonList, null, player2UUID, player2PokemonList, null, format);
-                }).iterations(1).delay(20L * 60 * WARM_UP).build();
+                }).iterations(1).delay(20L * WARM_UP).build();
             }
         }
     }
@@ -365,6 +401,7 @@ public class MatchMakingManager {
                     //Calculate quality of potential match
                     EloProfile oppProfile = ladder.getProfile(secondKey);
                     int matchValue = Math.abs(playerProfile.getElo() - oppProfile.getElo()) - timeVar;
+
                     //Check match quality is within threshold
                     if(matchValue <= MATCH_THRESHOLD){
                         //Check if match is best value

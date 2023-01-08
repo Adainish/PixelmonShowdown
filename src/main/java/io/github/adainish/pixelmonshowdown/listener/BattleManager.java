@@ -4,20 +4,20 @@ import ca.landonjw.gooeylibs2.implementation.tasks.Task;
 import com.pixelmonmod.pixelmon.api.battles.BattleEndCause;
 import com.pixelmonmod.pixelmon.api.battles.BattleResults;
 import com.pixelmonmod.pixelmon.api.events.battles.BattleEndEvent;
+import com.pixelmonmod.pixelmon.api.pokemon.Pokemon;
+import com.pixelmonmod.pixelmon.api.storage.PCStorage;
+import com.pixelmonmod.pixelmon.api.storage.PlayerPartyStorage;
+import com.pixelmonmod.pixelmon.api.storage.StorageProxy;
 import com.pixelmonmod.pixelmon.battles.BattleRegistry;
-import com.pixelmonmod.pixelmon.battles.controller.BattleController;
 import com.pixelmonmod.pixelmon.battles.controller.participants.BattleParticipant;
 import com.pixelmonmod.pixelmon.battles.controller.participants.PlayerParticipant;
-import com.pixelmonmod.pixelmon.command.impl.EndBattleCommand;
+import com.pixelmonmod.pixelmon.battles.controller.participants.WildPixelmonParticipant;
 import io.github.adainish.pixelmonshowdown.PixelmonShowdown;
 import io.github.adainish.pixelmonshowdown.arenas.Arena;
 import io.github.adainish.pixelmonshowdown.arenas.ArenaLocation;
 import io.github.adainish.pixelmonshowdown.arenas.ArenaManager;
 import io.github.adainish.pixelmonshowdown.arenas.Location;
-import io.github.adainish.pixelmonshowdown.queues.CompetitiveQueue;
-import io.github.adainish.pixelmonshowdown.queues.EloLadder;
-import io.github.adainish.pixelmonshowdown.queues.EloProfile;
-import io.github.adainish.pixelmonshowdown.queues.QueueManager;
+import io.github.adainish.pixelmonshowdown.queues.*;
 import io.github.adainish.pixelmonshowdown.util.DataManager;
 import io.github.adainish.pixelmonshowdown.util.StringUtil;
 import net.minecraft.entity.player.ServerPlayerEntity;
@@ -26,7 +26,7 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+
 
 public class BattleManager {
     private static final boolean ARENAS_ENABLED = DataManager.getConfigNode().node("Arena-Management", "Arenas-Enabled").getBoolean();
@@ -35,10 +35,14 @@ public class BattleManager {
     public void onBattleEnd(BattleEndEvent event) {
         if (event.getPlayers().size() == 0)
             return;
+
         //Get both participants in battle
         BattleParticipant bParticipant1 = (BattleParticipant) event.getResults().keySet().toArray()[0];
         BattleParticipant bParticipant2 = (BattleParticipant) event.getResults().keySet().toArray()[1];
 
+
+        if (bParticipant1 instanceof WildPixelmonParticipant || bParticipant2 instanceof WildPixelmonParticipant)
+            return;
 
         PlayerParticipant participant1 = (PlayerParticipant) bParticipant1;
         PlayerParticipant participant2 = (PlayerParticipant) bParticipant2;
@@ -50,15 +54,48 @@ public class BattleManager {
 
         //Check if both players are online
         if (player1 != null || player2 != null) {
-
             QueueManager queueManager = PixelmonShowdown.getInstance().queueManager;
 
             //Check if both players are in a match
             if (queueManager.isPlayerInMatch(player1UUID) && queueManager.isPlayerInMatch(player2UUID)) {
                 if (queueManager.findPlayerInMatch(player1UUID) != null) {
                     CompetitiveQueue queue = queueManager.findPlayerInMatch(player1UUID);
-                    EloLadder ladder = queue.getLadder();
 
+                    CompetitiveFormat format = queue.getFormat();
+
+                    if (format.isRandomBattle())
+                    {
+                        //wipe rental pokemon for both players
+                        PlayerPartyStorage ppsOne = StorageProxy.getParty(player1UUID);
+                        PlayerPartyStorage ppsTwo = StorageProxy.getParty(player2UUID);
+                        for (int i = 0; i < 6; i++) {
+                            if (ppsOne.get(i) != null)
+                            {
+                                ppsOne.set(i, null);
+                            }
+                        }
+                        for (int i = 0; i < 6; i++) {
+                            if (ppsTwo.get(i) != null)
+                            {
+                                ppsTwo.set(i, null);
+                            }
+                        }
+                        //add first mon from pc to party in first slot
+                        PCStorage pcOne = StorageProxy.getPCForPlayer(player1UUID);
+                        for (Pokemon p:pcOne.getAll()) {
+                            ppsOne.add(p);
+                            pcOne.set(p.getPosition(), null);
+                            break;
+                        }
+                        PCStorage pcTwo = StorageProxy.getPCForPlayer(player2UUID);
+                        for (Pokemon p:pcTwo.getAll()) {
+                            ppsTwo.add(p);
+                            pcTwo.set(p.getPosition(), null);
+                            break;
+                        }
+
+                    }
+                    EloLadder ladder = queue.getLadder();
                     //Check if both players are in match in the same format
                     if (queue.hasPlayerInMatch(player2UUID)) {
                         //Check if battle end was normal or not
@@ -134,10 +171,10 @@ public class BattleManager {
                             //Create task due to some odd battle crashes seemingly not triggering battle end or disconnect event
                             Task.builder().execute(task -> {
                                 //Check if both players are present
-                                if (PixelmonShowdown.getInstance().server.getPlayerList().getPlayerByUUID(player1UUID) != null || PixelmonShowdown.getInstance().server.getPlayerList().getPlayerByUUID(player2UUID) != null) {
+                                if (PixelmonShowdown.getInstance().server.getPlayerList().getPlayerByUUID(player1UUID) != null ||
+                                        PixelmonShowdown.getInstance().server.getPlayerList().getPlayerByUUID(player2UUID) != null) {
                                     //If both players aren't present, it will give win to whoever is still connected
                                     //This is to deter players trying to intentionally caused forced battle ends to prevent loss
-                                    System.out.println("Attempt task check from Battle Manager");
                                     //Add players as active for auto saving
                                     ladder.addAsActive(player1UUID);
                                     ladder.addAsActive(player2UUID);
@@ -172,10 +209,6 @@ public class BattleManager {
                                         ladder.updatePlayer(player1UUID);
                                         ladder.updatePlayer(player2UUID);
                                     }
-
-                                    //Remove both players from match
-
-                                    //End battle to prevent players being stuck in battle and having to /endbattle
                                 } else {
                                     //If both players are still connected, simply do not assign elo points.
 

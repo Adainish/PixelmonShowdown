@@ -46,6 +46,8 @@ public class PixelmonShowdown {
 
     public PermissionWrapper permissionWrapper;
 
+    public File defaultConfigFolder;
+
     public PixelmonShowdown() {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::setup);
         instance = this;
@@ -59,8 +61,8 @@ public class PixelmonShowdown {
                 .replace("%v", VERSION)
                 .replace("%y", YEAR)
         );
-        File configFolder = new File(FMLPaths.GAMEDIR.get().resolve(FMLConfig.defaultConfigPath()) + "/PixelmonShowdown");
-        DataManager.setup(configFolder);
+        this.defaultConfigFolder = new File(FMLPaths.GAMEDIR.get().resolve(FMLConfig.defaultConfigPath()).toString());
+        DataManager.setup();
     }
 
     @SubscribeEvent
@@ -79,6 +81,7 @@ public class PixelmonShowdown {
         queueManager.loadFromConfig();
         arenaManager.loadArenas();
         DataManager.startAutoSave();
+        MinecraftForge.EVENT_BUS.register(new BattleManager());
         Pixelmon.EVENT_BUS.register(new BattleManager());
         log.info("PixelmonShowdown " + VERSION + " Successfully Launched");
     }
