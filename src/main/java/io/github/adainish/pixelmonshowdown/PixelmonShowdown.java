@@ -62,7 +62,7 @@ public class PixelmonShowdown {
                 .replace("%y", YEAR)
         );
         this.defaultConfigFolder = new File(FMLPaths.GAMEDIR.get().resolve(FMLConfig.defaultConfigPath()).toString());
-        DataManager.setup();
+
     }
 
     @SubscribeEvent
@@ -78,6 +78,7 @@ public class PixelmonShowdown {
     @SubscribeEvent
     public void onServerStarted(FMLServerStartedEvent event) {
         server = ServerLifecycleHooks.getCurrentServer();
+        DataManager.setup();
         queueManager.loadFromConfig();
         arenaManager.loadArenas();
         DataManager.startAutoSave();
