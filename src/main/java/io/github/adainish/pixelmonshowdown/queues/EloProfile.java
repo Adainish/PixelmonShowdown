@@ -1,10 +1,11 @@
 package io.github.adainish.pixelmonshowdown.queues;
 
-import com.pixelmonmod.pixelmon.api.util.helpers.RandomHelper;
 import io.github.adainish.pixelmonshowdown.util.DataManager;
+import io.github.adainish.pixelmonshowdown.util.Util;
 import org.spongepowered.configurate.serialize.SerializationException;
 
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class EloProfile {
     private final static boolean IS_PERSISTENT = DataManager.getConfigNode().node("Elo-Management", "K-Factor", "K-Factor-Persistent").getBoolean();
@@ -22,10 +23,11 @@ public class EloProfile {
     private int wins;
     private int losses;
     private double winRate;
+    private long lastQueue;
     private int timeVar;
     private String playerName;
 
-    public EloProfile(UUID uuid, String formatName){
+    public EloProfile(UUID uuid, String formatName) {
         this.uuid = uuid;
         this.playerName = " ";
         this.formatName = formatName;
@@ -50,12 +52,39 @@ public class EloProfile {
         this.wins = loadedWins;
         this.losses = loadedLosses;
 
-        if(loadedWins + loadedLosses == 0){
+        if (loadedWins + loadedLosses == 0) {
             this.winRate = 0.0;
-        }
-        else{
+        } else {
             this.winRate = Math.round(wins * 100.0 / (wins + losses));
         }
+    }
+
+    public long getCooldownLong(CompetitiveFormat format)
+    {
+        long currentTime = System.currentTimeMillis();
+        return (lastQueue + TimeUnit.MINUTES.toMillis(format.getCooldown())) - currentTime;
+    }
+
+    public String getCooldownString(CompetitiveFormat format)
+    {
+        if (format.getCooldown() == 0)
+            return "No active cooldown";
+        long currentTime = System.currentTimeMillis();
+        long cd = getCooldownLong(format) - currentTime;
+        long hours = cd / Util.HOUR_IN_MILLIS;
+        cd = cd - (hours * Util.HOUR_IN_MILLIS);
+        long minutes = cd / Util.MINUTE_IN_MILLIS;
+        cd = cd - (minutes * Util.MINUTE_IN_MILLIS);
+        long seconds = cd / Util.SECOND_IN_MILLIS;
+        return hours + " Hours " + minutes + " Minutes " + seconds + " Seconds";
+    }
+
+    public boolean onCooldown(CompetitiveFormat format)
+    {
+        if (format.getCooldown() == 0)
+            return false;
+        long cooldownUntil = lastQueue + TimeUnit.MINUTES.toMillis(format.getCooldown());
+        return cooldownUntil > System.currentTimeMillis();
     }
 
     public void setPlayerName(String newPlayerName) {
@@ -126,10 +155,6 @@ public class EloProfile {
         double kFactor = getKFactor();
 
         int newElo = (int) (Math.round((elo + kFactor * (1.0 - getExpectedOutcome(oppElo)))));
-        if (newElo <= 1000)
-        {
-            newElo = 1000 + RandomHelper.getRandomNumberBetween(11, 31);
-        }
         //Set elo back to floor if it's below
         this.elo = Math.max(newElo, ELO_FLOOR);
         this.wins++;
@@ -142,10 +167,6 @@ public class EloProfile {
         double kFactor = getKFactor();
 
         int newElo = (int) (Math.round((elo + kFactor * (0.0 - getExpectedOutcome(oppElo)))));
-        if (newElo <= 1000)
-        {
-            newElo = 1000;
-        }
         //Set elo back to floor if it's below
         this.elo = Math.max(newElo, ELO_FLOOR);
 
@@ -177,5 +198,9 @@ public class EloProfile {
     //Gets the expected outcome of a pokemon battle
     private double getExpectedOutcome(int oppElo) {
         return 1 / (1 + Math.pow(10, (oppElo - elo)/400.0));
+    }
+
+    public void setLastQueue(long lastQueue) {
+        this.lastQueue = lastQueue;
     }
 }

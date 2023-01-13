@@ -221,7 +221,14 @@ public class UIHandler {
                     .onClick(b -> {
                         CompetitiveQueue queue = manager.findQueue(activeQueueFormat);
                         if(queue != null){
+                            EloLadder ladder = queue.getLadder();
+                            EloProfile eloProfile = ladder.getProfile(playerUUID);
                             UIManager.closeUI(b.getPlayer());
+                            if (eloProfile.onCooldown(queue.getFormat())) {
+                                b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&f[&6Pixelmon Showdown&f] &6You're on cooldown for another " + eloProfile.getCooldownString(queue.getFormat()))), playerUUID);
+                                return;
+                            }
+                            eloProfile.setLastQueue(System.currentTimeMillis());
                             queue.addPlayerInQueue(b.getPlayer().getUniqueID());
                             MatchMakingManager.runTask();
                             b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&f[&6Pixelmon Showdown&f] &6You have entered queue!")), playerUUID);

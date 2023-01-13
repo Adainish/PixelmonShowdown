@@ -47,6 +47,7 @@ public class CompetitiveFormat {
     private List<String> strMoveClauses = new ArrayList<>();
     private boolean isRandomBattle = false;
     private int complexNum = 0;
+    private int cooldown = 0;
 
     private boolean teamPreview = false;
 
@@ -412,27 +413,27 @@ public class CompetitiveFormat {
     public void loadFormat(){
         try {
             this.positionNum = DataManager.getFormatsNode().node("Formats", formatName, "Listing-Number").getInt() - 1;
-
+            setCooldown(DataManager.getFormatsNode().node("Formats", formatName, "Cooldown", "Timer").getInt());
             List<String> strPokemonClauses = DataManager.getFormatsNode().node("Formats", formatName, "Pokemon-Clauses").getList(TypeToken.get(String.class));
             List<String> strItemClauses = DataManager.getFormatsNode().node("Formats", formatName, "Item-Clauses").getList(TypeToken.get(String.class));
             List<String> strAbilityClauses = DataManager.getFormatsNode().node("Formats", formatName, "Ability-Clauses").getList(TypeToken.get(String.class));
             List<String> strMoveClauses = DataManager.getFormatsNode().node("Formats", formatName, "Move-Clauses").getList(TypeToken.get(String.class));
 
 
-            for (String strPokemonClause : strPokemonClauses) {
-                addPokemonClause(strPokemonClause);
+            if (strPokemonClauses != null) {
+                strPokemonClauses.forEach(this::addPokemonClause);
             }
 
-            for (String strItemClause : strItemClauses) {
-                addItemClause(strItemClause);
+            if (strItemClauses != null) {
+                strItemClauses.forEach(this::addItemClause);
             }
 
-            for (String strAbilityClause : strAbilityClauses) {
-                addAbilityClause(strAbilityClause);
+            if (strAbilityClauses != null) {
+                strAbilityClauses.forEach(this::addAbilityClause);
             }
 
-            for (String strMoveClause : strMoveClauses) {
-                addMoveClause(strMoveClause);
+            if (strMoveClauses != null) {
+                strMoveClauses.forEach(this::addMoveClause);
             }
 
             Iterator<CommentedConfigurationNode> itr = DataManager.getFormatsNode().node("Formats", formatName, "Complex-Clauses").childrenList().iterator();
@@ -488,5 +489,13 @@ public class CompetitiveFormat {
 
     public void setRandomBattle(boolean randomBattle) {
         isRandomBattle = randomBattle;
+    }
+
+    public int getCooldown() {
+        return cooldown;
+    }
+
+    public void setCooldown(int cooldown) {
+        this.cooldown = cooldown;
     }
 }

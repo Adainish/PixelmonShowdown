@@ -134,7 +134,7 @@ public class Formats extends Configurable {
                 this.get().node("Formats", s, "Battle-Rules", "Species-Clause").set(true);
                 this.get().node("Formats", s, "Battle-Rules", "Team-Preview").set(true);
                 this.get().node("Formats", s, "Battle-Rules", "Turn-Time").set(60);
-
+                this.get().node("Formats", s, "Cooldown", "Timer").set(5);
                 this.get().node("Formats", s, "Complex-Clauses").set(complexClauses);
                 this.get().node("Formats", s, "Item-Clauses").set(itemClauses);
                 this.get().node("Formats", s, "Listing-Number").set(listingNumber);
