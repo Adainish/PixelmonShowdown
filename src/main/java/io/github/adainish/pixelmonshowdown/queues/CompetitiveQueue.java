@@ -53,29 +53,12 @@ public class CompetitiveQueue {
         String playerName = PixelmonShowdown.getInstance().server.getPlayerList().getPlayerByUUID(player).getName().getUnformattedComponentText();
         if(!hasPlayerInQueue(player) && !hasPlayerInPreMatch(player)
                 && !hasPlayerInMatch(player)){
-            System.out.println("not in queue, pre match, or in match");
             //Check if player is in ladder already
             if(!ladder.hasPlayer(player)){
                 //Add player if they aren't
                 ladder.addPlayer(player, playerName);
             }
             playersInQueue.add(player);
-        } else {
-            if (hasPlayerInQueue(player))
-            {
-                System.out.println("Player in queue");
-            } else if (hasPlayerInPreMatch(player)){
-                System.out.println("Player in pre match");
-             } else if (hasPlayerInMatch(player))
-            {
-                System.out.println("Player detected in match");
-            } else if (hasPlayerInAny(player))
-            {
-                System.out.println("Idk how tf it reached this but the data is somewhere");
-            }
-            else {
-                System.out.println("It did a fucky adding to queue but god knows why");
-            }
         }
     }
 

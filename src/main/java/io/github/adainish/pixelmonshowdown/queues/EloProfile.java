@@ -52,11 +52,7 @@ public class EloProfile {
         this.wins = loadedWins;
         this.losses = loadedLosses;
 
-        if (loadedWins + loadedLosses == 0) {
-            this.winRate = 0.0;
-        } else {
-            this.winRate = Math.round(wins * 100.0 / (wins + losses));
-        }
+        this.winRate = loadedWins + loadedLosses == 0 ? 0.0 : Math.round(wins * 100.0 / (wins + losses));
     }
 
     public long getCooldownLong(CompetitiveFormat format)

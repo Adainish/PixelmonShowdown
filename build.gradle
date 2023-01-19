@@ -146,7 +146,7 @@ dependencies {
     implementation 'org.spongepowered:configurate-core:4.1.2'
     implementation 'org.spongepowered:configurate-hocon:4.1.2'
     implementation('ca.landonjw:GooeyLibs:1.16.5-2.3.3-SNAPSHOT')
-    implementation 'reforged:server:9.1.0@Pixelmon-1.16.5-9.1.0-server.jar'
+    implementation 'reforged:server:9.1.1@Pixelmon-1.16.5-9.1.1-server.jar'
     shadow 'org.spongepowered:configurate-core:4.1.2'
     shadow 'org.spongepowered:configurate-hocon:4.1.2'
     // Real mod deobf dependency examples - these get remapped to your current mappings

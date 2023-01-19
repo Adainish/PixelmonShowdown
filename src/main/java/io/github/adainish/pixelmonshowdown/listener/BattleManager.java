@@ -11,6 +11,7 @@ import com.pixelmonmod.pixelmon.api.storage.StorageProxy;
 import com.pixelmonmod.pixelmon.battles.BattleRegistry;
 import com.pixelmonmod.pixelmon.battles.controller.participants.BattleParticipant;
 import com.pixelmonmod.pixelmon.battles.controller.participants.PlayerParticipant;
+import com.pixelmonmod.pixelmon.battles.controller.participants.TrainerParticipant;
 import com.pixelmonmod.pixelmon.battles.controller.participants.WildPixelmonParticipant;
 import io.github.adainish.pixelmonshowdown.PixelmonShowdown;
 import io.github.adainish.pixelmonshowdown.arenas.Arena;
@@ -35,14 +36,15 @@ public class BattleManager {
     public void onBattleEnd(BattleEndEvent event) {
         if (event.getPlayers().size() == 0)
             return;
+        if (event.getResults().keySet().toArray()[0] instanceof WildPixelmonParticipant || event.getResults().keySet().toArray()[1] instanceof WildPixelmonParticipant)
+            return;
 
+        if (event.getResults().keySet().toArray()[0] instanceof TrainerParticipant || event.getResults().keySet().toArray()[1] instanceof TrainerParticipant)
+            return;
         //Get both participants in battle
+
         BattleParticipant bParticipant1 = (BattleParticipant) event.getResults().keySet().toArray()[0];
         BattleParticipant bParticipant2 = (BattleParticipant) event.getResults().keySet().toArray()[1];
-
-
-        if (bParticipant1 instanceof WildPixelmonParticipant || bParticipant2 instanceof WildPixelmonParticipant)
-            return;
 
         PlayerParticipant participant1 = (PlayerParticipant) bParticipant1;
         PlayerParticipant participant2 = (PlayerParticipant) bParticipant2;
