@@ -31,7 +31,8 @@ public class EloProfile {
         this.uuid = uuid;
         this.playerName = " ";
         this.formatName = formatName;
-        this.elo = 1000;
+        this.elo = ELO_FLOOR;
+        this.lastQueue = 0;
         this.wins = 0;
         this.losses = 0;
         this.winRate = 0.0;
@@ -46,12 +47,12 @@ public class EloProfile {
         int loadedElo = DataManager.getElosNode().node("Player-Elos", formatName, uuid.toString(), "Elo").getInt();
         int loadedWins = DataManager.getElosNode().node("Player-Elos", formatName, uuid.toString(), "Wins").getInt();
         int loadedLosses = DataManager.getElosNode().node("Player-Elos", formatName, uuid.toString(), "Losses").getInt();
-
+        long loadedLastQueue = DataManager.getElosNode().node("Player-Elos", formatName, uuid.toString(), "LastQueue").getLong();
         this.playerName = loadedPlayerName;
         this.elo = loadedElo;
         this.wins = loadedWins;
         this.losses = loadedLosses;
-
+        this.lastQueue = loadedLastQueue;
         this.winRate = loadedWins + loadedLosses == 0 ? 0.0 : Math.round(wins * 100.0 / (wins + losses));
     }
 
@@ -79,6 +80,8 @@ public class EloProfile {
     {
         if (format.getCooldown() == 0)
             return false;
+        if (lastQueue <= 0)
+            return false;
         long cooldownUntil = lastQueue + TimeUnit.MINUTES.toMillis(format.getCooldown());
         return cooldownUntil > System.currentTimeMillis();
     }
@@ -97,6 +100,7 @@ public class EloProfile {
             DataManager.getElosNode().node("Player-Elos", formatName, uuid.toString(), "Name").set(playerName);
             DataManager.getElosNode().node("Player-Elos", formatName, uuid.toString(), "Elo").set(elo);
             DataManager.getElosNode().node("Player-Elos", formatName, uuid.toString(), "Wins").set(wins);
+            DataManager.getElosNode().node("Player-Elos", formatName, uuid.toString(), "LastQueue").set(lastQueue);
             DataManager.getElosNode().node("Player-Elos", formatName, uuid.toString(), "Losses").set(losses);
         } catch (SerializationException e) {
             throw new RuntimeException(e);

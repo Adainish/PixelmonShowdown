@@ -111,8 +111,22 @@ public class EloLadder {
         }
     }
 
-    //Get a profile from the ladder
+
     public EloProfile getProfile(UUID player){
+        return eloProfilesByUUID.get(player);
+    }
+
+    //Get a profile from the ladder
+    public EloProfile getProfile(UUID player, String playerName){
+        if (eloProfilesByUUID.containsKey(player))
+        return eloProfilesByUUID.get(player);
+        EloProfile profile = new EloProfile(player, formatName);
+        profile.setPlayerName(playerName);
+
+        //Since player will have 1000 elo, we can simply add it to the end of the array
+        eloProfilesByElo.add(profile);
+        eloProfilesByUUID.put(player, profile);
+        activeEloProfiles.add(profile);
         return eloProfilesByUUID.get(player);
     }
 

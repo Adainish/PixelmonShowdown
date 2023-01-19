@@ -220,18 +220,23 @@ public class UIHandler {
                     .title(StringUtil.formattedString("&6Confirm"))
                     .onClick(b -> {
                         CompetitiveQueue queue = manager.findQueue(activeQueueFormat);
-                        if(queue != null){
+                        if(queue != null) {
                             EloLadder ladder = queue.getLadder();
-                            EloProfile eloProfile = ladder.getProfile(playerUUID);
-                            UIManager.closeUI(b.getPlayer());
-                            if (eloProfile.onCooldown(queue.getFormat())) {
-                                b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&f[&6Pixelmon Showdown&f] &6You're on cooldown for another " + eloProfile.getCooldownString(queue.getFormat()))), playerUUID);
-                                return;
+                            EloProfile eloProfile = ladder.getProfile(playerUUID, b.getPlayer().getName().getUnformattedComponentText());
+                            if (eloProfile != null) {
+                                UIManager.closeUI(b.getPlayer());
+                                if (eloProfile.onCooldown(queue.getFormat())) {
+                                    b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&f[&6Pixelmon Showdown&f] &6You're on cooldown for another " + eloProfile.getCooldownString(queue.getFormat()))), playerUUID);
+                                    return;
+                                }
+                                eloProfile.setLastQueue(System.currentTimeMillis());
+                                eloProfile.saveProfile();
+                                queue.addPlayerInQueue(b.getPlayer().getUniqueID());
+                                MatchMakingManager.runTask();
+                                b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&f[&6Pixelmon Showdown&f] &6You have entered queue!")), playerUUID);
+                            } else {
+                                b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&f[&6Pixelmon Showdown&f] &4Your player data could not be loaded...!")), playerUUID);
                             }
-                            eloProfile.setLastQueue(System.currentTimeMillis());
-                            queue.addPlayerInQueue(b.getPlayer().getUniqueID());
-                            MatchMakingManager.runTask();
-                            b.getPlayer().sendMessage(new StringTextComponent(StringUtil.formattedString("&f[&6Pixelmon Showdown&f] &6You have entered queue!")), playerUUID);
                         }
                     })
                     .build();
