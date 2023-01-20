@@ -1057,7 +1057,7 @@ public class UIHandler {
         else{
             ItemStack itemStarter = new ItemStack(PixelmonItems.poke_ball);
             GooeyButton startingPokemon = GooeyButton.builder()
-                    .title(StringUtil.formattedString("&6Starting Pokemon: " + this.startingPokemon.getSpecies()))
+                    .title(StringUtil.formattedString("&6Starting Pokemon: " + this.startingPokemon.getSpecies().getName()))
                     .display(itemStarter)
                     .build();
             chestTemplate.set(19, startingPokemon);
